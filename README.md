@@ -1,1 +1,1 @@
-double pendulum rl
+double-pendulum-rl
