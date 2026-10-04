@@ -3,27 +3,27 @@ from dataclasses import dataclass
 from engine.state import SimulationState
 
 
-@dataclass
+@dataclass(frozen=True)
 class SimulationParameters:
     block_mass: float  # kg
     bob_mass: float  # kg
     arm_length: float  # m
+    rail_length: float  # m
+    max_force: float  # Newtons
     rail_friction_coefficient: float = 0
-    rail_length: float = 0
-    max_force: float = 0  # Newtons
 
     def __post_init__(self):
         if self.max_force <= 0:
-            raise ValueError("Max force must be non-negative")
+            raise ValueError("Max force must be positive")
         if self.rail_length <= 0:
-            raise ValueError("Rail length must be non-negative")
+            raise ValueError("Rail length must be positive")
         if self.block_mass <= 0:
-            raise ValueError("Block mass must be non-negative")
+            raise ValueError("Block mass must be positive")
         if self.bob_mass <= 0:
-            raise ValueError("Bob mass must be non-negative")
+            raise ValueError("Bob mass must be positive")
 
 
-@dataclass
+@dataclass(frozen=True)
 class SimulationConfig:
     params: SimulationParameters
     initial_state: SimulationState

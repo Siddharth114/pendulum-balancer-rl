@@ -53,7 +53,7 @@ class SimulationEngine:
         (
             current_arm_angle,  # theta
             current_angular_velocity,  # theta dot
-            current_block_position_along_rail,  # x
+            _current_block_position_along_rail,  # x
             current_block_velocity,  # x dot
         ) = astuple(state)
 

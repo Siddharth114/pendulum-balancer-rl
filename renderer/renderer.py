@@ -1,53 +1,20 @@
-from dataclasses import dataclass
-
 import pygame
 
-
-@dataclass(frozen=True)
-class RendererConfig:
-    window_width: int  # pixels
-    window_height: int  # pixels
-
-    rail_margin: int  # distance from the window edge to the rail, in pixels
-    rail_thickness: int  # pixels
-
-    # in metres. this is used to calculate the scale for rendering
-    #  scale = window_width- (2*rail_margin) / rail_length  in pixels per metre
-    rail_length: int
-
-    block_radius: int  # pixels
-    bob_radius: int  # pixels
-    rod_thickness: int  # pixels
-
-    window_background_color: tuple[int, int, int] = (222, 222, 209)
-    rail_color: tuple[int, int, int] = (197, 199, 188)
-    block_color: tuple[int, int, int] = (182, 174, 159)
-    rod_color: tuple[int, int, int] = (82, 70, 70)
-    bob_color: tuple[int, int, int] = (182, 174, 159)
-
-    @property
-    def scale(self) -> float:
-        """in pixels per metre"""
-        return (self.window_width - (2 * self.rail_margin)) / self.rail_length
-
-
-@dataclass(frozen=True)
-class RenderFrameArgs:
-    """always relative to the pendulum system. so 0,0 is the top left corner of the rail, not of the window"""
-
-    block_position: tuple[float, float]
-    bob_position: tuple[float, float]
+from renderer.config import RendererConfig, RenderFrameArgs
 
 
 class Renderer:
-    def __init__(self, config: RendererConfig) -> None:
+    def __init__(self, config: RendererConfig, rail_length: float) -> None:
+        """rail_length is in metres, taken from the simulation so the two can't disagree"""
         self._config = config
+        # pixels per metre
+        self._scale = (config.window_width - (2 * config.rail_margin)) / rail_length
 
     def _system_coordinates(self, x: float, y: float) -> tuple[float, float]:
         """converts system coordinates (metres) to window coordinates (pixels)"""
         return (
-            self._config.rail_margin + (self._config.scale * x),
-            self._config.window_height // 2 + (self._config.scale * y),
+            self._config.rail_margin + (self._scale * x),
+            self._config.window_height // 2 + (self._scale * y),
         )
 
     def _draw_rail(self, surface: pygame.Surface):
