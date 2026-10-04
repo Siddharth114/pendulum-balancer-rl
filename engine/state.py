@@ -42,3 +42,9 @@ class SimulationState:
             + derivative.block_velocity,
             block_velocity=self.block_velocity + derivative.block_acceleration,
         )
+
+
+@dataclass(frozen=True)
+class CartesianCoordinates:
+    block_coordinates: tuple[float, float]
+    bob_coordinates: tuple[float, float]

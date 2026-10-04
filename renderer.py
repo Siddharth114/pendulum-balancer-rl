@@ -35,15 +35,15 @@ class RendererConfig:
 class RenderFrameArgs:
     """always relative to the pendulum system. so 0,0 is the top left corner of the rail, not of the window"""
 
-    block_position: tuple[int, int]
-    bob_position: tuple[int, int]
+    block_position: tuple[float, float]
+    bob_position: tuple[float, float]
 
 
 class Renderer:
     def __init__(self, config: RendererConfig) -> None:
         self._config = config
 
-    def _system_coordinates(self, x: int, y: int) -> tuple[float, float]:
+    def _system_coordinates(self, x: float, y: float) -> tuple[float, float]:
         """converts system coordinates (metres) to window coordinates (pixels)"""
         return (
             self._config.rail_margin + (self._config.scale * x),
