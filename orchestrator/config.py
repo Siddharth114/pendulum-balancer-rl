@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from engine.config import SimulationConfig, SimulationParameters
 from engine.state import SimulationState
 from renderer.config import RendererConfig
+from scoring.config import ScoringConfig
 
 _RAIL_LENGTH = 10  # metres
 
@@ -25,11 +26,14 @@ DEFAULT_SIMULATION_CONFIG = SimulationConfig(
     ),
 )
 
+DEFAULT_SCORING_CONFIG = ScoringConfig()
+
 
 @dataclass(frozen=True)
 class OrchestratorConfig:
     simulation: SimulationConfig = DEFAULT_SIMULATION_CONFIG
     renderer: RendererConfig = DEFAULT_RENDERER_CONFIG
+    scoring: ScoringConfig = DEFAULT_SCORING_CONFIG
 
     window_title: str = "Pendulum Balancer"
     framerate: int = 60

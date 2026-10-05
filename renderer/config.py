@@ -1,5 +1,7 @@
 from dataclasses import dataclass
 
+from scoring.scorekeeper import Score
+
 
 @dataclass(frozen=True)
 class RendererConfig:
@@ -19,6 +21,12 @@ class RendererConfig:
     rod_color: tuple[int, int, int] = (82, 70, 70)
     bob_color: tuple[int, int, int] = (182, 174, 159)
 
+    hud_margin: int = 50
+    hud_font_size: int = 24
+    hud_default_color: tuple[int, int, int] = (76, 69, 65)
+    score_up_color: tuple[int, int, int] = (132, 177, 121)
+    score_down_color: tuple[int, int, int] = (189, 68, 68)
+
 
 @dataclass(frozen=True)
 class RenderFrameArgs:
@@ -26,3 +34,5 @@ class RenderFrameArgs:
 
     block_position: tuple[float, float]
     bob_position: tuple[float, float]
+
+    score: Score

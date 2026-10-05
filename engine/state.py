@@ -1,3 +1,4 @@
+import math
 from dataclasses import dataclass
 
 
@@ -42,6 +43,10 @@ class SimulationState:
             + derivative.block_velocity,
             block_velocity=self.block_velocity + derivative.block_acceleration,
         )
+
+    @property
+    def is_bob_above_rail(self) -> bool:
+        return math.cos(self.arm_angle) < 0
 
 
 @dataclass(frozen=True)

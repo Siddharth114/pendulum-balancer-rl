@@ -6,6 +6,7 @@ from orchestrator.config import OrchestratorConfig
 from player.human_player import HumanPlayer
 from renderer.config import RenderFrameArgs
 from renderer.renderer import Renderer
+from scoring.scorekeeper import Score, ScoreKeeper
 
 
 class Orchestrator:
@@ -26,6 +27,10 @@ class Orchestrator:
             self._config.renderer,
             rail_length=self._config.simulation.params.rail_length,
         )
+
+        self._scorekeeper = ScoreKeeper(self._config.scoring)
+
+        self._current_score = Score(current_score=0, top_n=(), is_bob_above_rail=False)
 
         self._screen = pygame.display.set_mode(
             (self._config.renderer.window_width, self._config.renderer.window_height)
@@ -57,6 +62,11 @@ class Orchestrator:
 
             while self._time_accumulator >= self._config.simulation_dt:
                 self._state = self._simulation_engine.step(simulation_step_config)
+
+                self._current_score = self._scorekeeper.update_score(
+                    self._state, self._config.simulation_dt
+                )
+
                 self._time_accumulator -= self._config.simulation_dt
 
             cartesian_coordinates = self._simulation_engine.get_cartesian_coordinates(
@@ -66,6 +76,7 @@ class Orchestrator:
             render_frame_args = RenderFrameArgs(
                 block_position=cartesian_coordinates.block_coordinates,
                 bob_position=cartesian_coordinates.bob_coordinates,
+                score=self._current_score,
             )
 
             self._renderer.render_frame(surface=self._screen, args=render_frame_args)

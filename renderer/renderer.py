@@ -10,6 +10,8 @@ class Renderer:
         # pixels per metre
         self._scale = (config.window_width - (2 * config.rail_margin)) / rail_length
 
+        self._hud_font = pygame.font.Font(None, self._config.hud_font_size)
+
     def _system_coordinates(self, x: float, y: float) -> tuple[float, float]:
         """converts system coordinates (metres) to window coordinates (pixels)"""
         return (
@@ -57,9 +59,34 @@ class Renderer:
             center=(scaled_bob_x, scaled_bob_y),
         )
 
+    def _draw_hud(self, surface: pygame.Surface, args: RenderFrameArgs):
+        texts = [
+            (
+                f"Current Score: {args.score.current_score:.2f}s",
+                self._config.score_up_color
+                if args.score.is_bob_above_rail
+                else self._config.score_down_color,
+            ),
+            ("Best Scores:", self._config.hud_default_color),
+            *[
+                (f"{ind}. {score:.2f}s", self._config.hud_default_color)
+                for ind, score in enumerate(args.score.top_n, start=1)
+            ],
+        ]
+
+        x = self._config.window_width - self._config.hud_margin
+        y = self._config.hud_margin
+
+        for text, color in texts:
+            text_surface = self._hud_font.render(text, True, color)
+            surface.blit(text_surface, text_surface.get_rect(topright=(x, y)))
+            y += self._hud_font.get_linesize()
+
     def render_frame(self, surface: pygame.Surface, args: RenderFrameArgs):
         surface.fill(self._config.window_background_color)
 
         self._draw_rail(surface)
 
         self._draw_pendulum(surface, args)
+
+        self._draw_hud(surface, args)
