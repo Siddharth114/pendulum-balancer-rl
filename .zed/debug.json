@@ -13,4 +13,14 @@
         "env": {},
         "program": "$ZED_WORKTREE_ROOT/main.py",
     },
+    {
+        "adapter": "Debugpy",
+        "label": "Run main.py (easy)",
+        "request": "launch",
+        "python": "$ZED_WORKTREE_ROOT/.venv/bin/python",
+        "args": ["easy"],
+        "cwd": "$ZED_WORKTREE_ROOT",
+        "env": {},
+        "program": "$ZED_WORKTREE_ROOT/main.py",
+    },
 ]

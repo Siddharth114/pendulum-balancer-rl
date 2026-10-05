@@ -9,7 +9,7 @@ class SimulationStateDerivative:
     block_velocity: float  # m/s
     block_acceleration: float  # m/s^2
 
-    def __mul__(self, constant: float) -> "SimulationStateDerivative":
+    def __mul__(self, constant: float) -> SimulationStateDerivative:
         return SimulationStateDerivative(
             angular_velocity=self.angular_velocity * constant,
             angular_acceleration=self.angular_acceleration * constant,
@@ -17,9 +17,7 @@ class SimulationStateDerivative:
             block_acceleration=self.block_acceleration * constant,
         )
 
-    def __add__(
-        self, other: "SimulationStateDerivative"
-    ) -> "SimulationStateDerivative":
+    def __add__(self, other: SimulationStateDerivative) -> SimulationStateDerivative:
         return SimulationStateDerivative(
             angular_velocity=self.angular_velocity + other.angular_velocity,
             angular_acceleration=self.angular_acceleration + other.angular_acceleration,
@@ -35,7 +33,7 @@ class SimulationState:
     block_position_along_rail: float = 0  # from left corner of rail
     block_velocity: float = 0  # m/s
 
-    def __add__(self, derivative: SimulationStateDerivative) -> "SimulationState":
+    def __add__(self, derivative: SimulationStateDerivative) -> SimulationState:
         return SimulationState(
             arm_angle=self.arm_angle + derivative.angular_velocity,
             angular_velocity=self.angular_velocity + derivative.angular_acceleration,

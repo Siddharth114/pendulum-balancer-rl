@@ -1,4 +1,5 @@
-from dataclasses import dataclass
+import math
+from dataclasses import dataclass, replace
 
 from engine.config import SimulationConfig, SimulationParameters
 from engine.state import SimulationState
@@ -25,6 +26,19 @@ DEFAULT_SIMULATION_CONFIG = SimulationConfig(
         block_velocity=0,
     ),
 )
+
+# starts nearly upright with a slight lean, so it's balance-only (no swing-up)
+EASY_SIMULATION_CONFIG = replace(
+    DEFAULT_SIMULATION_CONFIG,
+    initial_state=replace(
+        DEFAULT_SIMULATION_CONFIG.initial_state, arm_angle=math.pi - 0.05
+    ),
+)
+
+SIMULATION_MODES = {
+    "normal": DEFAULT_SIMULATION_CONFIG,
+    "easy": EASY_SIMULATION_CONFIG,
+}
 
 DEFAULT_SCORING_CONFIG = ScoringConfig()
 

@@ -5,3 +5,16 @@ requires-python = ">=3.14"
 dependencies = [
     "pygame-ce>=2.5.8",
 ]
+
+[dependency-groups]
+dev = [
+    "poethepoet>=0.48.0",
+    "ruff>=0.16.10",
+    "ty>=0.0.84",
+]
+
+[tool.poe.tasks]
+lint = "ruff check ."
+format = "ruff format ."
+typecheck = "ty check"
+check = ["lint", "typecheck"]
