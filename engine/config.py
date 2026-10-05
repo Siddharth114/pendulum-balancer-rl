@@ -11,6 +11,7 @@ class SimulationParameters:
     rail_length: float  # m
     max_force: float  # Newtons
     rail_friction_coefficient: float = 0
+    g: float = 9.81  # m/s^2
 
     def __post_init__(self):
         if self.max_force <= 0:

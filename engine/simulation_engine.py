@@ -26,10 +26,12 @@ class SimulationEngine:
         self._bob_mass = config.params.bob_mass
         self._arm_length = config.params.arm_length
         self._rail_friction_coefficient = config.params.rail_friction_coefficient
-        self._g = 9.81  # m/s^2
+        self._g = config.params.g  # m/s^2
         self._state = config.initial_state
         self._rail_length = config.params.rail_length
         self._max_force = config.params.max_force
+
+        self._initial_state = config.initial_state
 
         self._total_mass = self._block_mass + self._bob_mass
 
@@ -199,3 +201,7 @@ class SimulationEngine:
                 self._arm_length * math.cos(state.arm_angle),
             ),
         )
+
+    def reset(self) -> SimulationState:
+        self._state = self._initial_state
+        return self._state
