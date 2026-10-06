@@ -1,6 +1,7 @@
 import argparse
 
-from orchestrator.config import SIMULATION_MODES, OrchestratorConfig
+from engine.config import SIMULATION_MODES
+from orchestrator.config import OrchestratorConfig
 from orchestrator.orchestrator import Orchestrator
 
 if __name__ == "__main__":

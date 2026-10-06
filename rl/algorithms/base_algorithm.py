@@ -1,8 +1,7 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 
-from player.base_player import Move
-from rl.env import RLEnv, RLEnvConfig, RLEnvState
+from rl.env import Action, RLEnv, RLEnvConfig, RLEnvState
 
 
 @dataclass(frozen=True)
@@ -17,7 +16,7 @@ class BaseAlgorithm(ABC):
         super().__init__()
 
     @abstractmethod
-    def action(self, state: RLEnvState) -> Move:
+    def action(self, state: RLEnvState) -> Action:
         raise NotImplementedError
 
     @abstractmethod

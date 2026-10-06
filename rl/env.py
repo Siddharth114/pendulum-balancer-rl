@@ -3,11 +3,14 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from engine.config import SimulationConfig, SimulationStepConfig
+from engine.config import (
+    DEFAULT_SIMULATION_CONFIG,
+    EASY_SIMULATION_CONFIG,
+    SimulationConfig,
+    SimulationStepConfig,
+)
 from engine.simulation_engine import SimulationEngine
 from engine.state import SimulationState
-from orchestrator.config import DEFAULT_SIMULATION_CONFIG, EASY_SIMULATION_CONFIG
-from player.base_player import Move
 
 
 @dataclass(frozen=True)
@@ -27,8 +30,8 @@ class RLEnvConfig:
 
     simulation_dt: float = 1 / 240
 
-    substeps: int = 8  # 30 Hz decisions; from the physics, same for every mode
-    max_steps: int = 300  # truncation, in decision steps
+    substeps: int = 8
+    max_steps: int = 300  # max steps before truncating
     terminate_on_fall: bool = True
 
 
@@ -40,6 +43,17 @@ RL_ENV_MODES = {
         simulation=DEFAULT_SIMULATION_CONFIG, max_steps=600, terminate_on_fall=False
     ),
 }
+
+
+@dataclass(frozen=True)
+class Action:
+    command: (
+        float  # in the range [-1, 1] i.e., left to right. a fraction of the max force
+    )
+
+    def __post_init__(self):
+        if not (-1 <= self.command <= 1):
+            raise ValueError("command must be between -1 and 1")
 
 
 @dataclass(frozen=True)
@@ -84,7 +98,7 @@ class RLEnv:
 
         return upright_reward - rail_centre_reward - spinning_reward
 
-    def step(self, action: Move) -> RLEnvState:
+    def step(self, action: Action) -> RLEnvState:
         simulation_step_config = SimulationStepConfig(
             time_delta=self._config.simulation_dt,
             command=action.command,
@@ -114,5 +128,5 @@ class RLEnv:
             terminated=False,
         )
 
-    def sample_action_space(self) -> Move:
-        return Move(command=np.random.uniform(self._action_low, self._action_high))
+    def sample_action_space(self) -> Action:
+        return Action(command=np.random.uniform(self._action_low, self._action_high))

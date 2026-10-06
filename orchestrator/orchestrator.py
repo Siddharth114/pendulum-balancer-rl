@@ -3,7 +3,6 @@ import pygame
 from engine.config import SimulationStepConfig
 from engine.simulation_engine import SimulationEngine
 from orchestrator.config import OrchestratorConfig
-from player.human_player import HumanPlayer
 from renderer.config import RenderFrameArgs
 from renderer.renderer import Renderer
 from scoring.scorekeeper import Score, ScoreKeeper
@@ -14,8 +13,6 @@ class Orchestrator:
         pygame.init()
 
         self._config = config
-
-        self._player = HumanPlayer()
 
         self._time_accumulator = 0.0
 
@@ -40,6 +37,10 @@ class Orchestrator:
         self._clock = pygame.time.Clock()
         self._running = True
 
+    def _read_command(self) -> float:
+        keys = pygame.key.get_pressed()
+        return keys[pygame.K_RIGHT] - keys[pygame.K_LEFT]
+
     def run(self) -> None:
         while self._running:
             real_time = min(
@@ -53,11 +54,9 @@ class Orchestrator:
                 if event.type == pygame.QUIT:
                     self._running = False
 
-            move = self._player.move(self._state)
-
             simulation_step_config = SimulationStepConfig(
                 time_delta=self._config.simulation_dt,
-                command=move.command,
+                command=self._read_command(),
             )
 
             while self._time_accumulator >= self._config.simulation_dt:

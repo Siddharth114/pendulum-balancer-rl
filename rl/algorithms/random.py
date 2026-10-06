@@ -1,6 +1,5 @@
-from player.base_player import Move
 from rl.algorithms.base_algorithm import BaseAlgorithm, TrainingResults
-from rl.env import RLEnvConfig, RLEnvState
+from rl.env import Action, RLEnvConfig, RLEnvState
 
 
 class Random(BaseAlgorithm):
@@ -10,7 +9,7 @@ class Random(BaseAlgorithm):
     def name(self) -> str:
         return "Random Agent - Baseline"
 
-    def action(self, state: RLEnvState) -> Move:
+    def action(self, state: RLEnvState) -> Action:
         return self._env.sample_action_space()
 
     def train(self, num_episodes: int) -> TrainingResults:
