@@ -22,5 +22,9 @@ class Trainer:
         results = self._algorithm.train(num_episodes)
         results_dir = self._writer.create_run_dir(self._algorithm.name(), self._mode)
         self._writer.write_results(results_dir, results)
-        self._grapher.plot_results(results, results_dir / "graph.png")
+        self._grapher.plot_results(
+            results,
+            results_dir / "graph.png",
+            title=f"{self._algorithm.name()} · {self._mode} · {num_episodes} episodes",
+        )
         return results_dir
