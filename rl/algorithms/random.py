@@ -7,7 +7,7 @@ class Random(BaseAlgorithm):
         super().__init__(config)
 
     def name(self) -> str:
-        return "Random Agent - Baseline"
+        return "Random Baseline"
 
     def action(self, state: RLEnvState) -> Action:
         return self._env.sample_action_space()
