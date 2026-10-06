@@ -57,8 +57,16 @@ class Action:
 
 
 @dataclass(frozen=True)
+class StepReward:
+    upright_reward: float = 0
+    rail_centre_reward: float = 0
+    spin_reward: float = 0
+    total_reward: float = 0
+
+
+@dataclass(frozen=True)
 class RLEnvState(SimulationState):
-    reward: float = 0
+    reward: StepReward = StepReward()
     terminated: bool = False
     truncated: bool = False
 
@@ -76,14 +84,14 @@ class RLEnv:
         self._action_low = -1
         self._action_high = 1
 
-    def _get_reward(self, state: SimulationState) -> float:
+    def _get_reward(self, state: SimulationState) -> StepReward:
         upright_reward = self._config.reward.upright_weight * (
             (1 - math.cos(state.arm_angle)) / 2
         )
 
         rail_length = self._config.simulation.params.rail_length
 
-        rail_centre_reward = self._config.reward.rail_centre_weight * (
+        rail_centre_reward = -self._config.reward.rail_centre_weight * (
             ((state.block_position_along_rail - rail_length / 2) / (rail_length / 2))
             ** 2
         )
@@ -94,9 +102,14 @@ class RLEnv:
             / self._config.simulation.params.arm_length
         )
 
-        spinning_reward = self._config.reward.spin_weight * (z / (1 + z))
+        spinning_reward = -self._config.reward.spin_weight * (z / (1 + z))
 
-        return upright_reward - rail_centre_reward - spinning_reward
+        return StepReward(
+            upright_reward=upright_reward,
+            rail_centre_reward=rail_centre_reward,
+            spin_reward=spinning_reward,
+            total_reward=upright_reward + rail_centre_reward + spinning_reward,
+        )
 
     def step(self, action: Action) -> RLEnvState:
         simulation_step_config = SimulationStepConfig(
@@ -124,9 +137,12 @@ class RLEnv:
 
         return RLEnvState(
             **self._state.__dict__,
-            reward=0,
+            reward=StepReward(),
             terminated=False,
         )
 
     def sample_action_space(self) -> Action:
         return Action(command=np.random.uniform(self._action_low, self._action_high))
+
+    def get_max_reward(self) -> float:
+        return self._config.max_steps * self._config.reward.upright_weight

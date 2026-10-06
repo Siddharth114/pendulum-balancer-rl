@@ -1,4 +1,4 @@
-from rl.algorithms.base_algorithm import BaseAlgorithm, TrainingResults
+from rl.algorithms.base_algorithm import BaseAlgorithm, EpisodeResult
 from rl.env import Action, RLEnvConfig, RLEnvState
 
 
@@ -12,28 +12,10 @@ class Random(BaseAlgorithm):
     def action(self, state: RLEnvState) -> Action:
         return self._env.sample_action_space()
 
-    def train(self, num_episodes: int) -> TrainingResults:
-        episode_rewards = []
-        episode_lengths = []
+    def train(self, num_episodes: int) -> list[EpisodeResult]:
+        episode_results = []
 
-        for _ in range(num_episodes):
-            total_reward = 0
-            episode_length = 0
-            state = self._env.reset()
+        for ind in range(num_episodes):
+            episode_results.append(self._run_episode(ind + 1))
 
-            while True:
-                episode_length += 1
-
-                action = self.action(state)
-
-                state = self._env.step(action)
-
-                total_reward += state.reward
-
-                if state.terminated or state.truncated:
-                    break
-
-            episode_rewards.append(total_reward)
-            episode_lengths.append(episode_length)
-
-        return TrainingResults(episode_rewards, episode_lengths)
+        return episode_results

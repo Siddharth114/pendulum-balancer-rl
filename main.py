@@ -3,13 +3,17 @@ import argparse
 from engine.config import SIMULATION_MODES
 from orchestrator.config import OrchestratorConfig
 from rl.algorithms.random import Random
-from rl.algorithms.training_grapher import GraphingConfig, TrainingGrapher
 from rl.env import RL_ENV_MODES
+from rl.run_writer import RunWriter, RunWriterConfig
 from rl.trainer import Trainer
+from rl.training_grapher import GraphingConfig, TrainingGrapher
 
 ALGORITHMS = {
     "random": Random,
 }
+
+# uv run main.py play easy
+# uv run main.py train random --mode normal --episodes 200
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -36,5 +40,6 @@ if __name__ == "__main__":
     elif args.command == "train":
         algorithm = ALGORITHMS[args.algorithm](RL_ENV_MODES[args.mode])
         grapher = TrainingGrapher(GraphingConfig())
-        path = Trainer(algorithm, grapher).run(args.episodes)
+        writer = RunWriter(RunWriterConfig())
+        path = Trainer(algorithm, writer, grapher, mode=args.mode).run(args.episodes)
         print(f"saved training graph to {path}")
