@@ -7,8 +7,8 @@ from rl.env.state import Action, RLEnvState
 
 
 class BaseAlgorithm(ABC):
-    def __init__(self, config: RLEnvConfig) -> None:
-        self._env = RLEnv(config)
+    def __init__(self, env: RLEnv) -> None:
+        self._env = env
         super().__init__()
 
     @property

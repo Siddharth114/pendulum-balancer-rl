@@ -51,3 +51,17 @@ class SimulationState:
 class CartesianCoordinates:
     block_coordinates: tuple[float, float]
     bob_coordinates: tuple[float, float]
+
+    @classmethod
+    def from_state(
+        cls, state: SimulationState, arm_length: float
+    ) -> CartesianCoordinates:
+        """metres from the rail's left end, y pointing down (screen convention)"""
+        return cls(
+            block_coordinates=(state.block_position_along_rail, 0),
+            bob_coordinates=(
+                state.block_position_along_rail
+                + arm_length * math.sin(state.arm_angle),
+                arm_length * math.cos(state.arm_angle),
+            ),
+        )

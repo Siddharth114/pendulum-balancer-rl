@@ -2,6 +2,7 @@ import pygame
 
 from engine.config import SimulationStepConfig
 from engine.simulation_engine import SimulationEngine
+from engine.state import CartesianCoordinates
 from orchestrator.config import OrchestratorConfig
 from renderer.config import RenderFrameArgs
 from renderer.renderer import Renderer
@@ -9,23 +10,26 @@ from scoring.scorekeeper import Score, ScoreKeeper
 
 
 class Orchestrator:
-    def __init__(self, config: OrchestratorConfig) -> None:
+    def __init__(
+        self,
+        config: OrchestratorConfig,
+        simulation_engine: SimulationEngine,
+        renderer: Renderer,
+        scorekeeper: ScoreKeeper,
+    ) -> None:
         pygame.init()
 
         self._config = config
 
         self._time_accumulator = 0.0
 
-        self._simulation_engine = SimulationEngine(self._config.simulation)
+        self._simulation_engine = simulation_engine
 
-        self._state = self._config.simulation.initial_state
+        self._state = self._simulation_engine.reset()
 
-        self._renderer = Renderer(
-            self._config.renderer,
-            rail_length=self._config.simulation.params.rail_length,
-        )
+        self._renderer = renderer
 
-        self._scorekeeper = ScoreKeeper(self._config.scoring)
+        self._scorekeeper = scorekeeper
 
         self._current_score = Score(current_score=0, top_n=(), is_bob_above_rail=False)
 
@@ -68,8 +72,8 @@ class Orchestrator:
 
                 self._time_accumulator -= self._config.simulation_dt
 
-            cartesian_coordinates = self._simulation_engine.get_cartesian_coordinates(
-                self._state
+            cartesian_coordinates = CartesianCoordinates.from_state(
+                self._state, self._config.simulation.params.arm_length
             )
 
             render_frame_args = RenderFrameArgs(

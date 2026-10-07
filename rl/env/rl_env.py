@@ -10,10 +10,14 @@ from rl.env.state import Action, RLEnvState, StepReward
 
 
 class RLEnv:
-    def __init__(self, config: RLEnvConfig) -> None:
+    def __init__(
+        self, config: RLEnvConfig, simulation_engine: SimulationEngine
+    ) -> None:
+        """simulation_engine should be built from config.simulation, the reward reads
+        the same parameters"""
         self._config = config
 
-        self._simulation_engine = SimulationEngine(config.simulation)
+        self._simulation_engine = simulation_engine
 
         self._state = self._simulation_engine.reset()
 

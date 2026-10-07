@@ -5,7 +5,6 @@ from enum import StrEnum
 
 from engine.config import SimulationConfig, SimulationStepConfig
 from engine.state import (
-    CartesianCoordinates,
     SimulationState,
     SimulationStateDerivative,
 )
@@ -191,16 +190,6 @@ class SimulationEngine:
 
         self._state = new_state
         return new_state
-
-    def get_cartesian_coordinates(self, state: SimulationState) -> CartesianCoordinates:
-        return CartesianCoordinates(
-            block_coordinates=(state.block_position_along_rail, 0),
-            bob_coordinates=(
-                state.block_position_along_rail
-                + self._arm_length * math.sin(state.arm_angle),
-                self._arm_length * math.cos(state.arm_angle),
-            ),
-        )
 
     def reset(self) -> SimulationState:
         self._state = self._initial_state

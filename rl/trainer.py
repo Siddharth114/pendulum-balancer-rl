@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
+from replay.replay_animator import ReplayAnimator
 from rl.algorithms.base_algorithm import BaseAlgorithm
 from rl.grapher import Grapher
 from rl.metrics_writer import MetricsWriter
@@ -22,6 +23,7 @@ class Trainer:
         metrics_writer: MetricsWriter,
         recorder: Recorder,
         grapher: Grapher,
+        replay_animator: ReplayAnimator,
     ) -> None:
         self._config = config
         self._algorithm = algorithm
@@ -29,6 +31,7 @@ class Trainer:
         self._metrics_writer = metrics_writer
         self._recorder = recorder
         self._grapher = grapher
+        self._replay_animator = replay_animator
 
     def _slugify(self, name: str) -> str:
         return name.replace(" ", "-").lower()
@@ -59,6 +62,7 @@ class Trainer:
         self._recorder.write_recordings(
             results_dir=results_dir,
             episodes=episodes,
+            env_config=self._algorithm.env_config,
         )
 
         self._grapher.plot_results(
@@ -66,5 +70,7 @@ class Trainer:
             filename=results_dir / "results.png",
             title=f"{self._algorithm.name()} · {self._training_mode} · {num_episodes} episodes",
         )
+
+        self._replay_animator.render(results_dir)
 
         return results_dir

@@ -1,12 +1,12 @@
 from rl.algorithms.base_algorithm import BaseAlgorithm
 from rl.algorithms.episode import Episode
-from rl.env.config import RLEnvConfig
+from rl.env.rl_env import RLEnv
 from rl.env.state import Action, RLEnvState
 
 
 class Random(BaseAlgorithm):
-    def __init__(self, config: RLEnvConfig) -> None:
-        super().__init__(config)
+    def __init__(self, env: RLEnv) -> None:
+        super().__init__(env)
 
     def name(self) -> str:
         return "Random Baseline"
