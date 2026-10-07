@@ -1,74 +1,12 @@
 import math
-from dataclasses import dataclass
 
 import numpy as np
 
-from engine.config import (
-    DEFAULT_SIMULATION_CONFIG,
-    EASY_SIMULATION_CONFIG,
-    SimulationConfig,
-    SimulationStepConfig,
-)
+from engine.config import SimulationStepConfig
 from engine.simulation_engine import SimulationEngine
 from engine.state import SimulationState
-
-
-@dataclass(frozen=True)
-class RewardConfig:
-    upright_weight: float = 1.0
-    rail_centre_weight: float = 0.1
-    spin_weight: float = 0.1
-
-
-DEFAULT_REWARD_CONFIG = RewardConfig()
-
-
-@dataclass(frozen=True)
-class RLEnvConfig:
-    simulation: SimulationConfig = EASY_SIMULATION_CONFIG
-    reward: RewardConfig = DEFAULT_REWARD_CONFIG
-
-    simulation_dt: float = 1 / 240
-
-    substeps: int = 8
-    max_steps: int = 300  # max steps before truncating
-    terminate_on_fall: bool = True
-
-
-RL_ENV_MODES = {
-    "easy": RLEnvConfig(
-        simulation=EASY_SIMULATION_CONFIG, max_steps=300, terminate_on_fall=True
-    ),
-    "normal": RLEnvConfig(
-        simulation=DEFAULT_SIMULATION_CONFIG, max_steps=600, terminate_on_fall=False
-    ),
-}
-
-
-@dataclass(frozen=True)
-class Action:
-    command: (
-        float  # in the range [-1, 1] i.e., left to right. a fraction of the max force
-    )
-
-    def __post_init__(self):
-        if not (-1 <= self.command <= 1):
-            raise ValueError("command must be between -1 and 1")
-
-
-@dataclass(frozen=True)
-class StepReward:
-    upright_reward: float = 0
-    rail_centre_reward: float = 0
-    spin_reward: float = 0
-    total_reward: float = 0
-
-
-@dataclass(frozen=True)
-class RLEnvState(SimulationState):
-    reward: StepReward = StepReward()
-    terminated: bool = False
-    truncated: bool = False
+from rl.env.config import RLEnvConfig
+from rl.env.state import Action, RLEnvState, StepReward
 
 
 class RLEnv:
@@ -140,6 +78,10 @@ class RLEnv:
             reward=StepReward(),
             terminated=False,
         )
+
+    @property
+    def config(self) -> RLEnvConfig:
+        return self._config
 
     def sample_action_space(self) -> Action:
         return Action(command=np.random.uniform(self._action_low, self._action_high))

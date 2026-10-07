@@ -3,10 +3,11 @@ import argparse
 from engine.config import SIMULATION_MODES
 from orchestrator.config import OrchestratorConfig
 from rl.algorithms.random import Random
-from rl.env import RL_ENV_MODES
-from rl.run_writer import RunWriter, RunWriterConfig
-from rl.trainer import Trainer
-from rl.training_grapher import GraphingConfig, TrainingGrapher
+from rl.env.config import RL_ENV_MODES
+from rl.grapher import Grapher, GrapherConfig
+from rl.metrics_writer import MetricsWriter, MetricsWriterConfig
+from rl.recorder import Recorder, RecorderConfig
+from rl.trainer import Trainer, TrainerConfig
 
 ALGORITHMS = {
     "random": Random,
@@ -39,7 +40,18 @@ if __name__ == "__main__":
         Orchestrator(OrchestratorConfig(simulation=SIMULATION_MODES[args.mode])).run()
     elif args.command == "train":
         algorithm = ALGORITHMS[args.algorithm](RL_ENV_MODES[args.mode])
-        grapher = TrainingGrapher(GraphingConfig())
-        writer = RunWriter(RunWriterConfig())
-        path = Trainer(algorithm, writer, grapher, mode=args.mode).run(args.episodes)
-        print(f"saved training graph to {path}")
+        grapher = Grapher(GrapherConfig())
+        writer = MetricsWriter(MetricsWriterConfig())
+        recorder = Recorder(RecorderConfig())
+
+        trainer = Trainer(
+            config=TrainerConfig(),
+            algorithm=algorithm,
+            training_mode=args.mode,
+            metrics_writer=writer,
+            recorder=recorder,
+            grapher=grapher,
+        )
+
+        path = trainer.run(args.episodes)
+        print(f"run saved to {path}")

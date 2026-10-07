@@ -1,5 +1,7 @@
-from rl.algorithms.base_algorithm import BaseAlgorithm, EpisodeResult
-from rl.env import Action, RLEnvConfig, RLEnvState
+from rl.algorithms.base_algorithm import BaseAlgorithm
+from rl.algorithms.episode import Episode
+from rl.env.config import RLEnvConfig
+from rl.env.state import Action, RLEnvState
 
 
 class Random(BaseAlgorithm):
@@ -12,10 +14,5 @@ class Random(BaseAlgorithm):
     def action(self, state: RLEnvState) -> Action:
         return self._env.sample_action_space()
 
-    def train(self, num_episodes: int) -> list[EpisodeResult]:
-        episode_results = []
-
-        for ind in range(num_episodes):
-            episode_results.append(self._run_episode(ind + 1))
-
-        return episode_results
+    def train(self, num_episodes: int) -> list[Episode]:
+        return [self._run_episode(ind + 1) for ind in range(num_episodes)]

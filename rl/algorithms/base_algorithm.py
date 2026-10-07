@@ -1,26 +1,9 @@
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
 
-from rl.env import Action, RLEnv, RLEnvConfig, RLEnvState
-
-
-@dataclass(frozen=True)
-class EpisodeResult:
-    number: int  # episode index
-    length: int  # step units
-
-    longest_balance: int  # step units
-
-    total_reward: float
-    max_reward: float
-
-    avg_upright_reward: float
-    avg_rail_centre_reward: float
-    avg_spin_reward: float
-    avg_total_reward: float
-
-    avg_command: float
-    avg_command_change: float
+from rl.algorithms.episode import Episode, EpisodeMetrics, EpisodeRecording
+from rl.env.config import RLEnvConfig
+from rl.env.rl_env import RLEnv
+from rl.env.state import Action, RLEnvState
 
 
 class BaseAlgorithm(ABC):
@@ -28,11 +11,15 @@ class BaseAlgorithm(ABC):
         self._env = RLEnv(config)
         super().__init__()
 
+    @property
+    def env_config(self) -> RLEnvConfig:
+        return self._env.config
+
     @abstractmethod
     def action(self, state: RLEnvState) -> Action:
         raise NotImplementedError
 
-    def _run_episode(self, episode_number: int) -> EpisodeResult:
+    def _run_episode(self, episode_number: int) -> Episode:
         max_reward = self._env.get_max_reward()
 
         total_reward = 0
@@ -48,6 +35,9 @@ class BaseAlgorithm(ABC):
         total_command = 0
         prev_command = None
         total_command_change = 0
+
+        states = [state.to_simulation_state()]
+        actions = []
 
         while True:
             episode_length += 1
@@ -69,6 +59,9 @@ class BaseAlgorithm(ABC):
             total_rail_centre_reward += step_reward.rail_centre_reward
             total_spin_reward += step_reward.spin_reward
 
+            states.append(state.to_simulation_state())
+            actions.append(action)
+
             total_command += abs(action.command)
             if prev_command is not None:
                 total_command_change += abs(action.command - prev_command)
@@ -84,22 +77,29 @@ class BaseAlgorithm(ABC):
         avg_command = total_command / episode_length
         avg_command_change = total_command_change / max(episode_length - 1, 1)
 
-        return EpisodeResult(
+        return Episode(
             number=episode_number,
-            length=episode_length,
-            longest_balance=best,
-            total_reward=total_reward,
-            max_reward=max_reward,
-            avg_upright_reward=avg_upright_reward,
-            avg_rail_centre_reward=avg_rail_centre_reward,
-            avg_spin_reward=avg_spin_reward,
-            avg_total_reward=avg_total_reward,
-            avg_command=avg_command,
-            avg_command_change=avg_command_change,
+            metrics=EpisodeMetrics(
+                length=episode_length,
+                longest_balance=best,
+                total_reward=total_reward,
+                max_reward=max_reward,
+                avg_upright_reward=avg_upright_reward,
+                avg_rail_centre_reward=avg_rail_centre_reward,
+                avg_spin_reward=avg_spin_reward,
+                avg_total_reward=avg_total_reward,
+                avg_command=avg_command,
+                avg_command_change=avg_command_change,
+            ),
+            recording=EpisodeRecording(
+                states=states,
+                actions=actions,
+                terminated=state.terminated,
+            ),
         )
 
     @abstractmethod
-    def train(self, num_episodes: int) -> list[EpisodeResult]:
+    def train(self, num_episodes: int) -> list[Episode]:
         raise NotImplementedError
 
     @abstractmethod

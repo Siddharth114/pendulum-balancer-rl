@@ -1,30 +1,70 @@
+from dataclasses import dataclass
+from datetime import datetime
 from pathlib import Path
 
 from rl.algorithms.base_algorithm import BaseAlgorithm
-from rl.run_writer import RunWriter
-from rl.training_grapher import TrainingGrapher
+from rl.grapher import Grapher
+from rl.metrics_writer import MetricsWriter
+from rl.recorder import Recorder
+
+
+@dataclass(frozen=True)
+class TrainerConfig:
+    results_dir: Path = Path("results")
 
 
 class Trainer:
     def __init__(
         self,
+        config: TrainerConfig,
         algorithm: BaseAlgorithm,
-        writer: RunWriter,
-        grapher: TrainingGrapher,
-        mode: str,
+        training_mode: str,
+        metrics_writer: MetricsWriter,
+        recorder: Recorder,
+        grapher: Grapher,
     ) -> None:
+        self._config = config
         self._algorithm = algorithm
+        self._training_mode = training_mode
+        self._metrics_writer = metrics_writer
+        self._recorder = recorder
         self._grapher = grapher
-        self._writer = writer
-        self._mode = mode
+
+    def _slugify(self, name: str) -> str:
+        return name.replace(" ", "-").lower()
+
+    def _create_run_dir(self, algorithm_name: str, training_mode: str) -> Path:
+        timestamp = datetime.now().astimezone().strftime("%Y%m%d-%H%M%S")
+        results_dir = Path(
+            f"{self._config.results_dir}/{self._slugify(algorithm_name)}_{training_mode}_{timestamp}"
+        )
+        results_dir.mkdir(parents=True, exist_ok=True)
+
+        return results_dir
 
     def run(self, num_episodes: int) -> Path:
-        results = self._algorithm.train(num_episodes)
-        results_dir = self._writer.create_run_dir(self._algorithm.name(), self._mode)
-        self._writer.write_results(results_dir, results)
-        self._grapher.plot_results(
-            results,
-            results_dir / "graph.png",
-            title=f"{self._algorithm.name()} · {self._mode} · {num_episodes} episodes",
+
+        episodes = self._algorithm.train(num_episodes)
+
+        results_dir = self._create_run_dir(
+            algorithm_name=self._algorithm.name(),
+            training_mode=self._training_mode,
         )
+
+        self._metrics_writer.write_metrics(
+            results_dir=results_dir,
+            episodes=episodes,
+        )
+
+        self._recorder.write_recordings(
+            results_dir=results_dir,
+            episodes=episodes,
+        )
+
+        self._grapher.plot_results(
+            results=episodes,
+            filename=results_dir / "results.png",
+            title=f"{self._algorithm.name()} · {self._training_mode} · {num_episodes} episodes",
+        )
+
         return results_dir
