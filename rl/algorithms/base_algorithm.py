@@ -1,12 +1,21 @@
 from abc import ABC, abstractmethod
+from typing import ClassVar
 
+from engine.state import SimulationState
 from rl.algorithms.episode import Episode, EpisodeMetrics, EpisodeRecording
 from rl.env.config import RLEnvConfig
 from rl.env.rl_env import RLEnv
-from rl.env.state import Action, RLEnvState
+from rl.env.state import Action
 
 
 class BaseAlgorithm(ABC):
+    registry: ClassVar[dict[str, type[BaseAlgorithm]]] = {}
+    cli_name: ClassVar[str]
+
+    def __init_subclass__(cls, **kwargs) -> None:
+        super().__init_subclass__(**kwargs)
+        BaseAlgorithm.registry[cls.cli_name] = cls
+
     def __init__(self, env: RLEnv) -> None:
         self._env = env
         super().__init__()
@@ -16,8 +25,19 @@ class BaseAlgorithm(ABC):
         return self._env.config
 
     @abstractmethod
-    def action(self, state: RLEnvState) -> Action:
+    def action(self, state: SimulationState) -> Action:
         raise NotImplementedError
+
+    @abstractmethod
+    def _update(
+        self,
+        current_state: SimulationState,
+        action_taken: Action,
+        new_state: SimulationState,
+        reward: float,
+        terminated: bool,
+    ) -> None:
+        raise NotImplementedError()
 
     def _run_episode(self, episode_number: int) -> Episode:
         max_reward = self._env.get_max_reward()
@@ -42,7 +62,7 @@ class BaseAlgorithm(ABC):
         while True:
             episode_length += 1
 
-            action = self.action(state)
+            action = self.action(state.to_simulation_state())
 
             state = self._env.step(action)
 
@@ -66,6 +86,15 @@ class BaseAlgorithm(ABC):
             if prev_command is not None:
                 total_command_change += abs(action.command - prev_command)
             prev_command = action.command
+
+            # hook to update q table
+            self._update(
+                current_state=states[-2],
+                action_taken=actions[-1],
+                new_state=states[-1],
+                reward=step_reward.total_reward,
+                terminated=state.terminated,
+            )
 
             if state.terminated or state.truncated:
                 break
