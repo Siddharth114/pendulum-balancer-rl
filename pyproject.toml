@@ -11,6 +11,16 @@ dependencies = [
     "seaborn>=0.13.2",
 ]
 
+[project.scripts]
+pendulum = "main:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+only-include = ["main.py", "engine", "orchestrator", "renderer", "replay", "rl", "scoring"]
+
 [dependency-groups]
 dev = [
     "poethepoet>=0.48.0",

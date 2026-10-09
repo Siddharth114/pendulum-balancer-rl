@@ -12,7 +12,7 @@ from orchestrator.orchestrator import Orchestrator
 from renderer.renderer import Renderer
 from replay.config import ReplayConfig
 from replay.replay_animator import ReplayAnimator
-from rl.algorithms.random import Random
+from rl.algorithms.base_algorithm import BaseAlgorithm
 from rl.env.config import RL_ENV_MODES
 from rl.env.rl_env import RLEnv
 from rl.grapher import Grapher, GrapherConfig
@@ -21,15 +21,12 @@ from rl.recorder import Recorder, RecorderConfig
 from rl.trainer import Trainer, TrainerConfig
 from scoring.scorekeeper import ScoreKeeper
 
-ALGORITHMS = {
-    "random": Random,
-}
+# uv run pendulum play easy
+# uv run pendulum train random --mode normal --episodes 200
+# uv run pendulum replay results/<run folder>
 
-# uv run main.py play easy
-# uv run main.py train random --mode normal --episodes 200
-# uv run main.py replay results/<run folder>
 
-if __name__ == "__main__":
+def main() -> None:
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers(dest="command", required=True)
 
@@ -39,7 +36,7 @@ if __name__ == "__main__":
     )
 
     train_parser = subparsers.add_parser("train", help="train an agent headless")
-    train_parser.add_argument("algorithm", choices=ALGORITHMS.keys())
+    train_parser.add_argument("algorithm", choices=BaseAlgorithm.registry.keys())
     train_parser.add_argument("--mode", default="easy", choices=RL_ENV_MODES.keys())
     train_parser.add_argument("--episodes", type=int, default=100)
 
@@ -70,7 +67,7 @@ if __name__ == "__main__":
 
         trainer = Trainer(
             config=TrainerConfig(),
-            algorithm=ALGORITHMS[args.algorithm](env),
+            algorithm=BaseAlgorithm.registry[args.algorithm](env),
             training_mode=args.mode,
             metrics_writer=MetricsWriter(MetricsWriterConfig()),
             recorder=recorder,
@@ -88,3 +85,7 @@ if __name__ == "__main__":
 
         path = replay_animator.render(args.run_dir)
         print(f"replay saved to {path}")
+
+
+if __name__ == "__main__":
+    main()
