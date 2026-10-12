@@ -2,6 +2,8 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
+from rich.console import Console
+
 from replay.replay_animator import ReplayAnimator
 from rl.algorithms.base_algorithm import BaseAlgorithm
 from rl.grapher import Grapher
@@ -54,22 +56,23 @@ class Trainer:
             training_mode=self._training_mode,
         )
 
-        self._metrics_writer.write_metrics(
-            results_dir=results_dir,
-            episodes=episodes,
-        )
+        with Console().status("saving metrics, recording and graph"):
+            self._metrics_writer.write_metrics(
+                results_dir=results_dir,
+                episodes=episodes,
+            )
 
-        self._recorder.write_recordings(
-            results_dir=results_dir,
-            episodes=episodes,
-            env_config=self._algorithm.env_config,
-        )
+            self._recorder.write_recordings(
+                results_dir=results_dir,
+                episodes=episodes,
+                env_config=self._algorithm.env_config,
+            )
 
-        self._grapher.plot_results(
-            results=episodes,
-            filename=results_dir / "results.png",
-            title=f"{self._algorithm.name()} · {self._training_mode} · {num_episodes} episodes",
-        )
+            self._grapher.plot_results(
+                results=episodes,
+                filename=results_dir / "results.png",
+                title=f"{self._algorithm.name()} · {self._training_mode} · {num_episodes} episodes",
+            )
 
         self._replay_animator.render(results_dir)
 

@@ -3,6 +3,7 @@ from collections import defaultdict
 from dataclasses import dataclass
 
 import numpy as np
+from rich.progress import track
 
 from engine.state import SimulationState
 from rl.algorithms.base_algorithm import BaseAlgorithm
@@ -180,7 +181,11 @@ class Bellman(BaseAlgorithm):
     def train(self, num_episodes: int) -> list[Episode]:
         episodes = []
 
-        for ind in range(num_episodes):
+        for ind in track(
+            range(num_episodes),
+            description="training",
+            auto_refresh=False,
+        ):
             self._epsilon = self._decayed_epsilon(ind, num_episodes)
             episodes.append(self._run_episode(ind + 1))
 

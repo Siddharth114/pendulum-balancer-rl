@@ -3,7 +3,10 @@ import os
 os.environ.setdefault("PYGAME_HIDE_SUPPORT_PROMPT", "1")
 
 import argparse
+import sys
 from pathlib import Path
+
+import questionary
 
 from engine.config import SIMULATION_MODES
 from engine.simulation_engine import SimulationEngine
@@ -24,6 +27,54 @@ from scoring.scorekeeper import ScoreKeeper
 # uv run pendulum play easy
 # uv run pendulum train random --mode normal --episodes 200
 # uv run pendulum replay results/<run folder>
+# uv run pendulum                  (no args: pick everything from menus)
+
+
+def _ask_args() -> list[str]:
+    """builds the same argv the cli takes, from arrow-key menus"""
+    # unsafe_ask raises KeyboardInterrupt on ctrl+c instead of returning None
+    command = questionary.select(
+        "what do you want to do?", choices=["train", "replay", "play"]
+    ).unsafe_ask()
+
+    if command == "play":
+        mode = questionary.select(
+            "mode", choices=list(SIMULATION_MODES), default="normal"
+        ).unsafe_ask()
+        return [command, mode]
+
+    if command == "train":
+        algorithm = questionary.select(
+            "algorithm", choices=list(BaseAlgorithm.registry)
+        ).unsafe_ask()
+        mode = questionary.select(
+            "mode", choices=list(RL_ENV_MODES), default="easy"
+        ).unsafe_ask()
+        episodes = questionary.text(
+            "episodes",
+            default="100",
+            validate=lambda text: text.isdigit() and int(text) > 0,
+        ).unsafe_ask()
+        return [command, algorithm, "--mode", mode, "--episodes", episodes]
+
+    # replay: only runs that have a recording, newest first
+    results_dir = TrainerConfig().results_dir
+    runs = sorted(
+        (
+            run_dir
+            for run_dir in (results_dir.iterdir() if results_dir.exists() else [])
+            if (run_dir / RecorderConfig().file_name).exists()
+        ),
+        key=lambda run_dir: run_dir.stat().st_mtime,
+        reverse=True,
+    )
+    if not runs:
+        sys.exit("no recorded runs to replay yet, train one first")
+
+    run_dir = questionary.select(
+        "run", choices=[str(run_dir) for run_dir in runs]
+    ).unsafe_ask()
+    return [command, run_dir]
 
 
 def main() -> None:
@@ -46,7 +97,12 @@ def main() -> None:
     replay_parser.add_argument("run_dir", type=Path)
     replay_parser.add_argument("--playback-speed", type=float, default=1.0)
 
-    args = parser.parse_args()
+    try:
+        argv = None if len(sys.argv) > 1 else _ask_args()
+    except KeyboardInterrupt:
+        return
+
+    args = parser.parse_args(argv)
 
     if args.command == "play":
         orchestrator_config = OrchestratorConfig(simulation=SIMULATION_MODES[args.mode])

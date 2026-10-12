@@ -4,6 +4,7 @@ from pathlib import Path
 
 import numpy as np
 import pygame
+from rich.progress import track
 
 from engine.state import CartesianCoordinates, SimulationState
 from renderer.renderer import Renderer
@@ -80,7 +81,7 @@ class ReplayAnimator:
         assert process.stdin is not None
 
         try:
-            for frame in range(last_frame + 1):
+            for frame in track(range(last_frame + 1), description="rendering replay"):
                 renderer.draw_background(surface)
 
                 running = [frame < len(states) - 1 for states in episodes]

@@ -8,6 +8,8 @@ dependencies = [
     "pandas>=3.0.6",
     "pyarrow>=25.0.1",
     "pygame-ce>=2.5.8",
+    "questionary>=2.1.1",
+    "rich>=15.0.0",
     "seaborn>=0.13.2",
 ]
 
