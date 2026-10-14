@@ -74,6 +74,8 @@ class Trainer:
                 title=f"{self._algorithm.name()} · {self._training_mode} · {num_episodes} episodes",
             )
 
+        # the replay reads the recording back from disk, so don't hold every episode twice
+        del episodes
         self._replay_animator.render(results_dir)
 
         return results_dir

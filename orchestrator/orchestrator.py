@@ -17,7 +17,8 @@ class Orchestrator:
         renderer: Renderer,
         scorekeeper: ScoreKeeper,
     ) -> None:
-        pygame.init()
+        # window and keyboard only. pygame.init() would also open the unused audio device
+        pygame.display.init()
 
         self._config = config
 

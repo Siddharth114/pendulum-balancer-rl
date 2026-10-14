@@ -1,5 +1,4 @@
 import math
-import os
 import subprocess
 from pathlib import Path
 
@@ -22,7 +21,7 @@ class ReplayAnimator:
         self._config = config
         self._recorder = recorder
 
-        # idempotent, lets the animator be built before render() runs pygame.init()
+        # idempotent, and the only pygame subsystem the replay needs
         pygame.font.init()
         self._value_font = pygame.font.SysFont(config.font, config.value_font_size)
         self._label_font = pygame.font.SysFont(config.font, config.label_font_size)
@@ -165,16 +164,16 @@ class ReplayAnimator:
         recording = self._recorder.read_recording(run_dir)
         metadata = recording.metadata
 
-        groups = [
-            group.sort_values("step")
-            for _, group in recording.steps.groupby("episode_number")
-        ]
-        # one (length + 1, 4) array per episode, so frames don't query the DataFrame
-        episodes = [group[metadata.state_columns].to_numpy() for group in groups]
+        steps = recording.steps.sort_values(["episode_number", "step"])
+        # one contiguous array split into (length + 1, 4) views per episode, so frames
+        # don't query the DataFrame and there's no per-episode copy of it
+        splits = np.flatnonzero(np.diff(steps["episode_number"].to_numpy())) + 1
+        episodes = np.split(steps[metadata.state_columns].to_numpy(), splits)
         # the last state has no action after it, recorded as NaN
-        commands = [
-            np.nan_to_num(group["command"].to_numpy(dtype=float)) for group in groups
-        ]
+        commands = np.split(
+            np.nan_to_num(steps["command"].to_numpy(dtype=float)), splits
+        )
+        del recording, steps  # the arrays are all the frames need
         ends = np.array([len(states) - 1 for states in episodes])
         last_frame = int(ends.max())
         flare_colors = self._episode_colors(len(episodes))
@@ -187,10 +186,9 @@ class ReplayAnimator:
         fade_frames = max(1, round(config.fade_seconds / metadata.dt))
         decay = round(255 * math.exp(-metadata.dt / config.trail_seconds))
 
-        # headless: frames are drawn onto an off-screen surface, no window opens.
-        # set here rather than at import, so importing this never affects the game window
-        os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
-        pygame.init()
+        # headless: frames are drawn onto off-screen surfaces, which need no pygame
+        # subsystem (fonts are already up). pygame.init() would also open the audio
+        # device, which then underruns while this loop keeps the cpu busy
         width, height = config.width, config.height
         scale = (width - 2 * config.rail_margin) / metadata.rail_length
         rail_y = round(height * config.rail_height)
@@ -303,7 +301,8 @@ class ReplayAnimator:
                         pendulum_colors[index],
                         opacity * weights[index],
                     )
-                photo += pygame.surfarray.array3d(pendulums)
+                # pixels3d is a view, so no per-frame copy; it unlocks once the statement ends
+                np.add(photo, pygame.surfarray.pixels3d(pendulums), out=photo)
 
                 self._draw_strip(surface, strip_points[: min(frame, last_frame) + 1])
                 self._draw_readouts(
