@@ -14,7 +14,7 @@ from rl.env.state import Action
 
 @dataclass()
 class BellmanConfig:
-    action_space_items: int = 5
+    action_space_items: int = 2
 
     min_arm_angle: float = 0
     max_arm_angle: float = 2 * np.pi

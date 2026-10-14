@@ -31,8 +31,6 @@ from scoring.scorekeeper import ScoreKeeper
 
 
 def _ask_args() -> list[str]:
-    """builds the same argv the cli takes, from arrow-key menus"""
-    # unsafe_ask raises KeyboardInterrupt on ctrl+c instead of returning None
     command = questionary.select(
         "what do you want to do?", choices=["train", "replay", "play"]
     ).unsafe_ask()
@@ -57,7 +55,6 @@ def _ask_args() -> list[str]:
         ).unsafe_ask()
         return [command, algorithm, "--mode", mode, "--episodes", episodes]
 
-    # replay: only runs that have a recording, newest first
     results_dir = TrainerConfig().results_dir
     runs = sorted(
         (
