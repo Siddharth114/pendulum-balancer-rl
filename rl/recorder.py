@@ -1,10 +1,11 @@
 import json
+from collections.abc import Callable, Generator
+from contextlib import contextmanager
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
 import pandas as pd
 import pyarrow as pa
-import pyarrow.parquet as pq
 
 from rl.algorithms.episode import Episode
 from rl.env.config import RLEnvConfig
@@ -14,6 +15,17 @@ STATE_COLUMNS = (
     "angular_velocity",
     "block_position_along_rail",
     "block_velocity",
+)
+
+
+SCHEMA = pa.schema(
+    [
+        ("episode_number", pa.int64()),
+        ("step", pa.int64()),
+        *[(column, pa.float64()) for column in STATE_COLUMNS],
+        ("command", pa.float64()),
+        ("terminated", pa.bool_()),
+    ]
 )
 
 
@@ -53,36 +65,42 @@ class Recording:
 
 @dataclass(frozen=True)
 class RecorderConfig:
-    file_name: str = "recording.parquet"
+    file_name: str = "recording.arrows"
+    rows_per_write: int = 100_000
 
 
 class Recorder:
     def __init__(self, config: RecorderConfig):
         self._config = config
 
-    def write_recordings(
-        self, results_dir: Path, episodes: list[Episode], env_config: RLEnvConfig
-    ) -> None:
+    @contextmanager
+    def open(
+        self, results_dir: Path, env_config: RLEnvConfig
+    ) -> Generator[Callable[[Episode], None]]:
         recordings_path = results_dir / self._config.file_name
 
-        columns: dict[str, list] = {
-            "episode_number": [],
-            "step": [],
-            **{column: [] for column in STATE_COLUMNS},
-            "command": [],
-            "terminated": [],
-        }
+        metadata = RecordingMetadata.from_env_config(env_config)
+        schema = SCHEMA.with_metadata({METADATA_KEY: json.dumps(asdict(metadata))})
 
-        for episode in episodes:
+        sink = pa.OSFile(str(recordings_path), "wb")
+        writer = pa.ipc.new_stream(
+            sink, schema, options=pa.ipc.IpcWriteOptions(compression="zstd")
+        )
+        columns: dict[str, list] = {name: [] for name in schema.names}
+
+        def flush() -> None:
+            if columns["step"]:
+                writer.write_batch(pa.RecordBatch.from_pydict(columns, schema=schema))
+                for values in columns.values():
+                    values.clear()
+
+        def write_episode(episode: Episode) -> None:
             recording = episode.recording
-
             for step, state in enumerate(recording.states):
                 columns["episode_number"].append(episode.number)
                 columns["step"].append(step)
-
                 for column in STATE_COLUMNS:
                     columns[column].append(getattr(state, column))
-
                 columns["command"].append(
                     recording.actions[step].command
                     if step < len(recording.actions)
@@ -90,23 +108,22 @@ class Recorder:
                 )
                 columns["terminated"].append(recording.terminated)
 
-        table = pa.Table.from_pandas(pd.DataFrame(columns), preserve_index=False)
+            if len(columns["step"]) >= self._config.rows_per_write:
+                flush()
 
-        metadata = RecordingMetadata.from_env_config(env_config)
-        table = table.replace_schema_metadata(
-            {
-                **(table.schema.metadata or {}),
-                METADATA_KEY: json.dumps(asdict(metadata)).encode(),
-            }
-        )
-
-        pq.write_table(table, recordings_path)
+        try:
+            yield write_episode
+        finally:
+            flush()
+            writer.close()
+            sink.close()
 
     def read_recording(self, results_dir: Path) -> Recording:
-        table = pq.read_table(results_dir / self._config.file_name)
+        with pa.memory_map(str(results_dir / self._config.file_name)) as source:
+            reader = pa.ipc.open_stream(source)
+            metadata = RecordingMetadata(
+                **json.loads((reader.schema.metadata or {})[METADATA_KEY])
+            )
+            steps = reader.read_all().to_pandas()
 
-        metadata = RecordingMetadata(
-            **json.loads((table.schema.metadata or {})[METADATA_KEY])
-        )
-
-        return Recording(steps=table.to_pandas(), metadata=metadata)
+        return Recording(steps=steps, metadata=metadata)

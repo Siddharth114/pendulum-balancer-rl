@@ -2,7 +2,6 @@ from rich.progress import track
 
 from engine.state import SimulationState
 from rl.algorithms.base_algorithm import BaseAlgorithm
-from rl.algorithms.episode import Episode
 from rl.env.rl_env import RLEnv
 from rl.env.state import Action
 
@@ -29,10 +28,9 @@ class Random(BaseAlgorithm):
     def action(self, state: SimulationState) -> Action:
         return self._env.sample_action_space()
 
-    def train(self, num_episodes: int) -> list[Episode]:
-        return [
+    def train(self, num_episodes: int) -> None:
+
+        for ind in track(
+            range(num_episodes), description="training", auto_refresh=False
+        ):
             self._run_episode(ind + 1)
-            for ind in track(
-                range(num_episodes), description="training", auto_refresh=False
-            )
-        ]

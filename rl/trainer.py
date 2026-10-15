@@ -6,6 +6,7 @@ from rich.console import Console
 
 from replay.replay_animator import ReplayAnimator
 from rl.algorithms.base_algorithm import BaseAlgorithm
+from rl.algorithms.episode import Episode
 from rl.grapher import Grapher
 from rl.metrics_writer import MetricsWriter
 from rl.recorder import Recorder
@@ -49,33 +50,31 @@ class Trainer:
 
     def run(self, num_episodes: int) -> Path:
 
-        episodes = self._algorithm.train(num_episodes)
-
         results_dir = self._create_run_dir(
             algorithm_name=self._algorithm.name(),
             training_mode=self._training_mode,
         )
 
-        with Console().status("saving metrics, recording and graph"):
-            self._metrics_writer.write_metrics(
-                results_dir=results_dir,
-                episodes=episodes,
-            )
-
-            self._recorder.write_recordings(
-                results_dir=results_dir,
-                episodes=episodes,
-                env_config=self._algorithm.env_config,
-            )
-
-            self._grapher.plot_results(
-                results=episodes,
+        with (
+            Console().status("training"),
+            self._metrics_writer.open(results_dir=results_dir) as write_metrics,
+            self._recorder.open(
+                results_dir=results_dir, env_config=self._algorithm.env_config
+            ) as record_metrics,
+            self._grapher.open(
                 filename=results_dir / "results.png",
                 title=f"{self._algorithm.name()} · {self._training_mode} · {num_episodes} episodes",
-            )
+            ) as graph_metrics,
+        ):
 
-        # the replay reads the recording back from disk, so don't hold every episode twice
-        del episodes
+            def save(episode: Episode) -> None:
+                write_metrics(episode)
+                record_metrics(episode)
+                graph_metrics(episode)
+
+            self._algorithm.set_on_episode(save)
+            self._algorithm.train(num_episodes)
+
         self._replay_animator.render(results_dir)
 
         return results_dir

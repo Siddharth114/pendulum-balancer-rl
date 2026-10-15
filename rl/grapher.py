@@ -1,3 +1,5 @@
+from collections.abc import Callable, Generator
+from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -9,7 +11,7 @@ from matplotlib.axes import Axes
 from matplotlib.layout_engine import ConstrainedLayoutEngine
 from matplotlib.typing import RcKeyType
 
-from rl.algorithms.episode import Episode
+from rl.algorithms.episode import Episode, EpisodeMetrics
 
 STYLE_OVERRIDES: dict[RcKeyType, Any] = {
     "axes.spines.top": False,
@@ -88,13 +90,13 @@ class Grapher:
             color=COLORS["reference"],
         )
 
-    def _balance_graph(self, results: list[Episode], axes: Axes, trend: str):
-        episodes = [r.number for r in results]
-
+    def _balance_graph(
+        self, episodes: list[int], metrics: list[EpisodeMetrics], axes: Axes, trend: str
+    ):
         self._plot_raw_and_trend(
             axes,
             episodes,
-            [r.metrics.longest_balance for r in results],
+            [m.longest_balance for m in metrics],
             COLORS["metric"],
         )
 
@@ -102,11 +104,12 @@ class Grapher:
         axes.set_ylabel("steps")
         axes.set_ylim(bottom=0)
 
-    def _reward_graph(self, results: list[Episode], axes: Axes, trend: str):
-        episodes = [r.number for r in results]
-        max_reward = results[0].metrics.max_reward
+    def _reward_graph(
+        self, episodes: list[int], metrics: list[EpisodeMetrics], axes: Axes, trend: str
+    ):
+        max_reward = metrics[0].max_reward
 
-        returns = [r.metrics.total_reward for r in results]
+        returns = [m.total_reward for m in metrics]
 
         self._plot_raw_and_trend(axes, episodes, returns, COLORS["metric"])
         self._reference_line(axes, max_reward, episodes, f"max {max_reward:g}")
@@ -116,23 +119,23 @@ class Grapher:
 
         axes.set_ylim(min(0, min(returns) * 1.05), max_reward * 1.05)
 
-    def _per_step_reward_graph(self, results: list[Episode], axes: Axes):
-        episodes = [r.number for r in results]
-
+    def _per_step_reward_graph(
+        self, episodes: list[int], metrics: list[EpisodeMetrics], axes: Axes
+    ):
         axes.axhline(0, color=COLORS["reference"], linewidth=1)
 
         for label, values, color in [
             (
                 "Upright",
-                [r.metrics.avg_upright_reward for r in results],
+                [m.avg_upright_reward for m in metrics],
                 COLORS["upright"],
             ),
             (
                 "Rail centre",
-                [r.metrics.avg_rail_centre_reward for r in results],
+                [m.avg_rail_centre_reward for m in metrics],
                 COLORS["rail_centre"],
             ),
-            ("Spin", [r.metrics.avg_spin_reward for r in results], COLORS["spin"]),
+            ("Spin", [m.avg_spin_reward for m in metrics], COLORS["spin"]),
         ]:
             axes.plot(
                 episodes, self._smooth(values), color=color, linewidth=1.25, label=label
@@ -140,7 +143,7 @@ class Grapher:
 
         axes.plot(
             episodes,
-            self._smooth([r.metrics.avg_total_reward for r in results]),
+            self._smooth([m.avg_total_reward for m in metrics]),
             color=COLORS["total"],
             linewidth=2.25,
             label="Total",
@@ -151,20 +154,20 @@ class Grapher:
         axes.set_ylabel("reward / step")
         axes.legend(loc="best")
 
-    def _command_graph(self, results: list[Episode], axes: Axes):
-        episodes = [r.number for r in results]
-
+    def _command_graph(
+        self, episodes: list[int], metrics: list[EpisodeMetrics], axes: Axes
+    ):
         self._plot_raw_and_trend(
             axes,
             episodes,
-            [r.metrics.avg_command for r in results],
+            [m.avg_command for m in metrics],
             COLORS["metric"],
             label="|command|",
         )
         self._plot_raw_and_trend(
             axes,
             episodes,
-            [r.metrics.avg_command_change for r in results],
+            [m.avg_command_change for m in metrics],
             COLORS["command_change"],
             label="|command change|",
         )
@@ -175,8 +178,31 @@ class Grapher:
         axes.set_ylim(bottom=0)
         axes.legend(loc="best")
 
-    def plot_results(self, results: list[Episode], filename: Path, title: str) -> None:
-        window = self._trend_window(len(results))
+    @contextmanager
+    def open(self, filename: Path, title: str) -> Generator[Callable[[Episode], None]]:
+        """collects each episode's metrics (a few numbers, never the recording) and
+        plots them on exit, also on ctrl-c so a cut-short run still gets its graph"""
+        episodes: list[int] = []
+        metrics: list[EpisodeMetrics] = []
+
+        def write(episode: Episode) -> None:
+            episodes.append(episode.number)
+            metrics.append(episode.metrics)
+
+        try:
+            yield write
+        finally:
+            if episodes:
+                self._plot(episodes, metrics, filename, title)
+
+    def _plot(
+        self,
+        episodes: list[int],
+        metrics: list[EpisodeMetrics],
+        filename: Path,
+        title: str,
+    ) -> None:
+        window = self._trend_window(len(episodes))
         # title suffix, empty when the run is too short to smooth
         trend = f" · {window}-ep avg" if window > 1 else ""
 
@@ -191,10 +217,10 @@ class Grapher:
                 ),
             )
 
-            self._balance_graph(results, axes[0, 0], trend)
-            self._reward_graph(results, axes[0, 1], trend)
-            self._per_step_reward_graph(results, axes[1, 0])
-            self._command_graph(results, axes[1, 1])
+            self._balance_graph(episodes, metrics, axes[0, 0], trend)
+            self._reward_graph(episodes, metrics, axes[0, 1], trend)
+            self._per_step_reward_graph(episodes, metrics, axes[1, 0])
+            self._command_graph(episodes, metrics, axes[1, 1])
 
             fig.suptitle(title, fontsize=13, fontweight="bold")
 

@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from collections.abc import Callable
 from typing import ClassVar
 
 from engine.state import SimulationState
@@ -18,6 +19,7 @@ class BaseAlgorithm(ABC):
 
     def __init__(self, env: RLEnv) -> None:
         self._env = env
+        self._on_episode: Callable[[Episode], None] | None = None
         super().__init__()
 
     @property
@@ -27,6 +29,9 @@ class BaseAlgorithm(ABC):
     @abstractmethod
     def action(self, state: SimulationState) -> Action:
         raise NotImplementedError
+
+    def set_on_episode(self, callback: Callable[[Episode], None]) -> None:
+        self._on_episode = callback
 
     @abstractmethod
     def _update(
@@ -106,7 +111,7 @@ class BaseAlgorithm(ABC):
         avg_command = total_command / episode_length
         avg_command_change = total_command_change / max(episode_length - 1, 1)
 
-        return Episode(
+        episode = Episode(
             number=episode_number,
             metrics=EpisodeMetrics(
                 length=episode_length,
@@ -127,8 +132,13 @@ class BaseAlgorithm(ABC):
             ),
         )
 
+        if self._on_episode is not None:
+            self._on_episode(episode)
+
+        return episode
+
     @abstractmethod
-    def train(self, num_episodes: int) -> list[Episode]:
+    def train(self, num_episodes: int) -> None:
         raise NotImplementedError
 
     @abstractmethod

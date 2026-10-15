@@ -7,7 +7,6 @@ from rich.progress import track
 
 from engine.state import SimulationState
 from rl.algorithms.base_algorithm import BaseAlgorithm
-from rl.algorithms.episode import Episode
 from rl.env.rl_env import RLEnv
 from rl.env.state import Action
 
@@ -178,8 +177,7 @@ class Bellman(BaseAlgorithm):
             self._config.epsilon_end - self._config.epsilon_start
         )
 
-    def train(self, num_episodes: int) -> list[Episode]:
-        episodes = []
+    def train(self, num_episodes: int) -> None:
 
         for ind in track(
             range(num_episodes),
@@ -187,6 +185,4 @@ class Bellman(BaseAlgorithm):
             auto_refresh=False,
         ):
             self._epsilon = self._decayed_epsilon(ind, num_episodes)
-            episodes.append(self._run_episode(ind + 1))
-
-        return episodes
+            self._run_episode(ind + 1)
