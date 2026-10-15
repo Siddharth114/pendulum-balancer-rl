@@ -4,7 +4,7 @@ from pathlib import Path
 
 from rich.console import Console
 
-from replay.replay_animator import ReplayAnimator
+from replay.bench.bench import BenchWriter
 from rl.algorithms.base_algorithm import BaseAlgorithm
 from rl.algorithms.episode import Episode
 from rl.grapher import Grapher
@@ -26,7 +26,7 @@ class Trainer:
         metrics_writer: MetricsWriter,
         recorder: Recorder,
         grapher: Grapher,
-        replay_animator: ReplayAnimator,
+        bench_writer: BenchWriter,
     ) -> None:
         self._config = config
         self._algorithm = algorithm
@@ -34,7 +34,7 @@ class Trainer:
         self._metrics_writer = metrics_writer
         self._recorder = recorder
         self._grapher = grapher
-        self._replay_animator = replay_animator
+        self._bench_writer = bench_writer
 
     def _slugify(self, name: str) -> str:
         return name.replace(" ", "-").lower()
@@ -75,6 +75,7 @@ class Trainer:
             self._algorithm.set_on_episode(save)
             self._algorithm.train(num_episodes)
 
-        self._replay_animator.render(results_dir)
+        # the bench page streams the recording; the mp4 (pendulum replay) loads it whole
+        self._bench_writer.write(results_dir)
 
         return results_dir

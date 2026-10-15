@@ -134,11 +134,13 @@ def main() -> None:
             metrics_writer=MetricsWriter(MetricsWriterConfig()),
             recorder=recorder,
             grapher=Grapher(GrapherConfig()),
-            replay_animator=ReplayAnimator(ReplayConfig(), recorder),
+            bench_writer=BenchWriter(BenchConfig(open_browser=False), recorder),
         )
 
         path = trainer.run(args.episodes)
-        print(f"run saved to {path}")
+        print(
+            f"run saved to {path}, open {path / BenchConfig().file_name} to replay it"
+        )
     elif args.command == "replay":
         replay_animator = ReplayAnimator(
             ReplayConfig(playback_speed=args.playback_speed),
