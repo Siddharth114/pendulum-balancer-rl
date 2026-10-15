@@ -13,6 +13,7 @@ from engine.simulation_engine import SimulationEngine
 from orchestrator.config import OrchestratorConfig
 from orchestrator.orchestrator import Orchestrator
 from renderer.renderer import Renderer
+from replay.bench.bench import BenchConfig, BenchWriter
 from replay.config import ReplayConfig
 from replay.replay_animator import ReplayAnimator
 from rl.algorithms.base_algorithm import BaseAlgorithm
@@ -27,12 +28,13 @@ from scoring.scorekeeper import ScoreKeeper
 # uv run pendulum play easy
 # uv run pendulum train random --mode normal --episodes 200
 # uv run pendulum replay results/<run folder>
+# uv run pendulum bench results/<run folder> [--light]   (interactive bench.html, opens from disk)
 # uv run pendulum                  (no args: pick everything from menus)
 
 
 def _ask_args() -> list[str]:
     command = questionary.select(
-        "what do you want to do?", choices=["train", "replay", "play"]
+        "what do you want to do?", choices=["train", "replay", "bench", "play"]
     ).unsafe_ask()
 
     if command == "play":
@@ -94,6 +96,13 @@ def main() -> None:
     replay_parser.add_argument("run_dir", type=Path)
     replay_parser.add_argument("--playback-speed", type=float, default=1.0)
 
+    bench_parser = subparsers.add_parser(
+        "bench", help="write a training run as an interactive pendulum bench page"
+    )
+    bench_parser.add_argument("run_dir", type=Path)
+    bench_parser.add_argument("--light", action="store_true")
+    bench_parser.add_argument("--no-browser", action="store_true")
+
     try:
         argv = None if len(sys.argv) > 1 else _ask_args()
     except KeyboardInterrupt:
@@ -138,6 +147,12 @@ def main() -> None:
 
         path = replay_animator.render(args.run_dir)
         print(f"replay saved to {path}")
+    elif args.command == "bench":
+        path = BenchWriter(
+            BenchConfig(light=args.light, open_browser=not args.no_browser),
+            Recorder(RecorderConfig()),
+        ).write(args.run_dir)
+        print(f"bench saved to {path}")
 
 
 if __name__ == "__main__":

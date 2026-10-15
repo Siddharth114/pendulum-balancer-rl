@@ -54,6 +54,10 @@ class RecordingMetadata:
             state_columns=list(STATE_COLUMNS),
         )
 
+    @classmethod
+    def from_schema(cls, schema: pa.Schema) -> RecordingMetadata:
+        return cls(**json.loads((schema.metadata or {})[METADATA_KEY]))
+
 
 @dataclass(frozen=True)
 class Recording:
@@ -77,7 +81,7 @@ class Recorder:
     def open(
         self, results_dir: Path, env_config: RLEnvConfig
     ) -> Generator[Callable[[Episode], None]]:
-        recordings_path = results_dir / self._config.file_name
+        recordings_path = self.path_of(results_dir)
 
         metadata = RecordingMetadata.from_env_config(env_config)
         schema = SCHEMA.with_metadata({METADATA_KEY: json.dumps(asdict(metadata))})
@@ -118,12 +122,21 @@ class Recorder:
             writer.close()
             sink.close()
 
-    def read_recording(self, results_dir: Path) -> Recording:
-        with pa.memory_map(str(results_dir / self._config.file_name)) as source:
+    def path_of(self, results_dir: Path) -> Path:
+        return results_dir / self._config.file_name
+
+    @contextmanager
+    def open_reader(
+        self, results_dir: Path
+    ) -> Generator[tuple[RecordingMetadata, pa.ipc.RecordBatchStreamReader]]:
+        """iterate the reader for one batch at a time, for runs too big to load whole.
+        a plain file rather than a memory map, so pages already read don't stay resident"""
+        with pa.OSFile(str(self.path_of(results_dir)), "r") as source:
             reader = pa.ipc.open_stream(source)
-            metadata = RecordingMetadata(
-                **json.loads((reader.schema.metadata or {})[METADATA_KEY])
-            )
+            yield RecordingMetadata.from_schema(reader.schema), reader
+
+    def read_recording(self, results_dir: Path) -> Recording:
+        with self.open_reader(results_dir) as (metadata, reader):
             steps = reader.read_all().to_pandas()
 
         return Recording(steps=steps, metadata=metadata)
