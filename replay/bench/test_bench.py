@@ -9,7 +9,7 @@ from pathlib import Path
 import numpy as np
 import pyarrow as pa
 
-from replay.bench.bench import ANGLE_SCALE, BenchConfig, export_bench
+from replay.bench.bench import ANGLE_SCALE, BenchConfig, export_bench, longest_balance
 from rl.recorder import (
     METADATA_KEY,
     SCHEMA,
@@ -87,6 +87,14 @@ def main() -> None:
     position = np.frombuffer(first, "<u2", 12, 24) / summary["chunks"]["positionScale"]
     assert np.allclose(position, 5.0, atol=1e-3)
     assert np.frombuffer(first, np.int8, 12, 48).tolist() == [1] * 12
+    # every test episode is held upright: balance counts every state after the reset
+    balance = np.frombuffer(base64.b64decode(summary["balance"]), np.uint16)
+    assert balance.tolist() == [4, 6, 10]
+
+    # down, up, up, down, up, up, up: the reset state never counts, the longest run is 3
+    angles = np.array([np.pi, 0, np.pi, np.pi, 0, np.pi, np.pi, np.pi])
+    assert longest_balance(angles) == 3
+    assert longest_balance(np.zeros(5)) == 0
     print("bench export ok")
 
 

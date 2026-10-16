@@ -75,11 +75,20 @@ class _Chunks:
         self._episodes = []
 
 
+def longest_balance(angle: np.ndarray) -> int:
+    """the longest run of steps with the bob above the rail, counted after each step as
+    training counts it (BaseAlgorithm's longest_balance), so the reset state is skipped"""
+    above = np.concatenate([[False], np.cos(angle[1:]) < 0, [False]])
+    edges = np.flatnonzero(np.diff(above.astype(np.int8)))
+    return int((edges[1::2] - edges[::2]).max(initial=0))
+
+
 def export_bench(recorder: Recorder, run_dir: Path, config: BenchConfig) -> dict:
     """streams the recording once, a batch at a time: every episode goes into a chunk
-    script, and only its length and fall flag are kept for the page's timeline"""
+    script, and only its length, balance and fall flag are kept for the page's timeline"""
     numbers: list[int] = []
     steps: list[int] = []
+    balance: list[int] = []
     fell: list[bool] = []
     open_parts: list[tuple[np.ndarray, np.ndarray, np.ndarray]] = []
 
@@ -95,6 +104,7 @@ def export_bench(recorder: Recorder, run_dir: Path, config: BenchConfig) -> dict
                 np.concatenate(part) for part in zip(*open_parts)
             )
             steps.append(len(angle) - 1)  # the last state has no action after it
+            balance.append(longest_balance(angle))
             chunks.add(angle, position, command)
             open_parts.clear()
 
@@ -132,6 +142,9 @@ def export_bench(recorder: Recorder, run_dir: Path, config: BenchConfig) -> dict
         "first": numbers[0],
         "last": numbers[-1],
         "packed": _b64(packed),  # two bytes per episode: its length, and a fall bit
+        # what the drum and timeline chart: with terminate_on_fall off every episode
+        # runs the full length, so length alone shows no learning
+        "balance": _b64(np.minimum(np.array(balance), 0xFFFF).astype(np.uint16)),
         "numbers": None if contiguous else _b64(numbers_array.astype(np.int32)),
         "chunks": {
             "dir": config.chunk_dir,

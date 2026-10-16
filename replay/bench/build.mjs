@@ -446,9 +446,9 @@ const body = k.plateHtml({
   readout: `episode ${DATA.first}`,
   keys: [
     { mark: "lit", label: "Bob: the episode replaying now" },
-    { mark: "raised", label: `Drum: how long each of the ${DATA.episodes.toLocaleString("en-US")} episodes lasted` },
+    { mark: "raised", label: `Drum: the longest each of the ${DATA.episodes.toLocaleString("en-US")} episodes stayed upright` },
   ],
-  caption: `Run ${DATA.run}. The arm replays a recorded episode at true speed on a ${META.rail_length} m rail with a ${META.arm_length} m arm; the motor dial shows the push each step. The drum and the timeline record survival time, from none to the ${META.max_steps}-step limit, for every episode; a picked episode loads from the episode files beside this page.`,
+  caption: `Run ${DATA.run}. The arm replays a recorded episode at true speed on a ${META.rail_length} m rail with a ${META.arm_length} m arm; the motor dial shows the push each step. The drum and the timeline record each episode's longest run with the bob above the rail, scaled to the run's best, out of a ${META.max_steps}-step limit; a picked episode loads from the episode files beside this page.`,
   body: `<div class="pb-stage" tabindex="0" role="slider" aria-label="Episode: drag or use the arrow keys to pick an episode, Home and End for the first and last" aria-valuemin="${DATA.first}" aria-valuemax="${DATA.last}" aria-valuenow="${DATA.first}">${svg}</div>`,
 });
 
@@ -458,7 +458,7 @@ const button = (name, label, title) => `<button type="button" data-jump="${name}
 const timeline = `<div class="pb-timeline">
 <div class="pb-strip-head"><span class="pb-strip-title">Episodes · ${fmt(DATA.episodes)}</span><span class="pb-view" data-view></span><span class="pb-jumps">${button("first", "first", "First episode")}${button("longest", "longest", "Longest episode")}${button("last", "last", "Last episode")}<i></i>${button("out", "−", "Zoom out")}${button("in", "+", "Zoom in")}${button("fit", "fit", "Show the whole run")}</span></div>
 <div class="pb-plot" tabindex="0" role="slider" aria-label="Episode timeline: click an episode to replay it, drag to pan, scroll to zoom; arrow keys step one episode, Shift ten, plus and minus zoom" aria-valuemin="${DATA.first}" aria-valuemax="${DATA.last}" aria-valuenow="${DATA.first}">
-<canvas></canvas><span class="pb-scale" style="top:4px">${META.max_steps} steps</span><span class="pb-mark" data-kind="hover"></span><span class="pb-mark" data-kind="now"></span><span class="pb-tip" hidden></span>
+<canvas></canvas><span class="pb-scale" style="top:4px">${META.max_steps} steps upright</span><span class="pb-mark" data-kind="hover"></span><span class="pb-mark" data-kind="now"></span><span class="pb-tip" hidden></span>
 </div>
 <div class="pb-axis" data-axis></div>
 <div class="pb-overview" aria-hidden="true"><canvas></canvas><span class="pb-window"></span></div>

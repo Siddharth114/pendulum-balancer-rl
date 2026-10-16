@@ -23,7 +23,15 @@ const STEPS = PACKED.map((value) => value & 0x7fff);
 const FELL = PACKED.map((value) => value >> 15);
 const NUMBERS = RUN.numbers ? decode(RUN.numbers, Int32Array) : null;
 const numberOf = (index) => (NUMBERS ? NUMBERS[index] : RUN.first + index);
-const LONGEST = STEPS.reduce((best, steps, index) => (steps > STEPS[best] ? index : best), 0);
+// the longest run upright in each episode: what the drum and timeline chart
+const BALANCE = decode(RUN.balance, Uint16Array);
+const LONGEST = BALANCE.reduce((best, steps, index) => (steps > BALANCE[best] ? index : best), 0);
+// the charts' top: the best balance rounded up to a round number, never past the limit
+const SCALE = (() => {
+  const best = Math.max(1, BALANCE[LONGEST]);
+  const power = 10 ** Math.floor(Math.log10(best));
+  return Math.min(META.max_steps, [1, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10].map((m) => m * power).find((top) => top >= best));
+})();
 
 // the drum's paper: each column the min, mean and max of a run of neighbouring episodes
 const COLUMNS = (() => {
@@ -38,9 +46,9 @@ const COLUMNS = (() => {
     let high = -Infinity;
     let sum = 0;
     for (let index = from; index < to; index++) {
-      low = Math.min(low, STEPS[index]);
-      high = Math.max(high, STEPS[index]);
-      sum += STEPS[index];
+      low = Math.min(low, BALANCE[index]);
+      high = Math.max(high, BALANCE[index]);
+      sum += BALANCE[index];
     }
     min[c] = low;
     max[c] = high;
@@ -100,7 +108,7 @@ const penArmEl = part("pen-arm");
 const penBlockEl = part("pen-block");
 const penTopEl = part("pen-post-top");
 const DRUM = DATA.drum;
-const zOfSteps = (steps) => DRUM.paperZ[0] + (steps / META.max_steps) * (DRUM.paperZ[1] - DRUM.paperZ[0]);
+const zOfSteps = (steps) => DRUM.paperZ[0] + (Math.min(steps, SCALE) / SCALE) * (DRUM.paperZ[1] - DRUM.paperZ[0]);
 const columnAt = (share) => clamp(Math.floor(share * COLUMNS.count), 0, COLUMNS.count - 1);
 const facingOf = (angle) => Math.cos(angle - DRUM.facing);
 const onDrum = (angle, z) => iso([DRUM.x + DRUM.r * Math.cos(angle), DRUM.y + DRUM.r * Math.sin(angle), z], P);
@@ -155,7 +163,8 @@ const fmt = (value) => value.toLocaleString("en-US");
 const wrap = (angle) => Math.atan2(Math.sin(angle), Math.cos(angle));
 const shareOf = (index) => (COUNT > 1 ? index / (COUNT - 1) : 0);
 const HOLD = 1.1; // seconds on the last frame before the replay starts again
-const lastOf = (index) => `${FELL[index] ? "fell at" : "held"} ${(STEPS[index] * META.dt).toFixed(1)} s`;
+const seconds = (steps) => (steps * META.dt).toFixed(1);
+const lastOf = (index) => `upright ${seconds(BALANCE[index])} s of ${seconds(STEPS[index])} s${FELL[index] ? " · fell" : ""}`;
 
 // episodes live in chunk scripts next to the page, a few hundred to a file. a script
 // tag loads from disk where fetch can't, so the page opens without a server; only the
@@ -389,6 +398,7 @@ stage.addEventListener("pointercancel", release);
 // ---- the timeline under the card ---------------------------------------------
 // view is a span of episode indices; episode i covers [i, i + 1)
 const plot = document.querySelector(".pb-plot");
+plot.querySelector(".pb-scale").textContent = `${fmt(SCALE)} steps upright`;
 const plotCanvas = plot.querySelector("canvas");
 const nowMark = plot.querySelector('[data-kind="now"]');
 const hoverMark = plot.querySelector('[data-kind="hover"]');
@@ -424,13 +434,13 @@ function sizeCanvas(element, canvas) {
 function paintPlot() {
   const { g, width, height } = sizeCanvas(plot, plotCanvas);
   const floor = height - PLOT_FOOT;
-  const y = (steps) => floor - (steps / META.max_steps) * (floor - PLOT_TOP);
+  const y = (steps) => floor - (Math.min(steps, SCALE) / SCALE) * (floor - PLOT_TOP);
   const span = spanOf();
   const xOf = (index) => ((index - view.from) / span) * width;
   g.lineWidth = 1;
   g.strokeStyle = ink("--anatomy-faint");
   for (const level of [0, 0.25, 0.5, 0.75, 1]) {
-    const at = Math.round(y(level * META.max_steps)) + 0.5;
+    const at = Math.round(y(level * SCALE)) + 0.5;
     g.beginPath();
     g.moveTo(0, at);
     g.lineTo(width, at);
@@ -446,7 +456,7 @@ function paintPlot() {
       const gap = x1 - x0 > 5 ? 1 : 0;
       g.fillStyle = ink(FELL[index] ? "--anatomy-mid" : "--anatomy-hi");
       g.globalAlpha = FELL[index] ? 0.7 : 1;
-      g.fillRect(x0 + gap, y(STEPS[index]), Math.max(1, x1 - x0 - 2 * gap), floor - y(STEPS[index]));
+      g.fillRect(x0 + gap, y(BALANCE[index]), Math.max(1, x1 - x0 - 2 * gap), floor - y(BALANCE[index]));
     }
     g.globalAlpha = 1;
   } else {
@@ -462,9 +472,9 @@ function paintPlot() {
       let b = -Infinity;
       let sum = 0;
       for (let index = from; index < to; index++) {
-        a = Math.min(a, STEPS[index]);
-        b = Math.max(b, STEPS[index]);
-        sum += STEPS[index];
+        a = Math.min(a, BALANCE[index]);
+        b = Math.max(b, BALANCE[index]);
+        sum += BALANCE[index];
       }
       low[px] = a;
       high[px] = b;
@@ -489,7 +499,7 @@ function paintOverview() {
   g.strokeStyle = ink("--anatomy-mid");
   g.lineWidth = 1;
   g.beginPath();
-  for (let c = 0; c < COLUMNS.count; c++) g.lineTo(((c + 0.5) / COLUMNS.count) * width, height - 2 - (COLUMNS.mean[c] / META.max_steps) * (height - 4));
+  for (let c = 0; c < COLUMNS.count; c++) g.lineTo(((c + 0.5) / COLUMNS.count) * width, height - 2 - (COLUMNS.mean[c] / SCALE) * (height - 4));
   g.stroke();
 }
 
