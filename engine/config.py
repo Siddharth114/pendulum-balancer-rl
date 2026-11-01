@@ -1,5 +1,8 @@
 import math
+import numpy as np
 from dataclasses import dataclass, replace
+
+from numpy.random import rand
 
 from engine.state import SimulationState
 
@@ -74,7 +77,8 @@ DEFAULT_SIMULATION_CONFIG = SimulationConfig(
 EASY_SIMULATION_CONFIG = replace(
     DEFAULT_SIMULATION_CONFIG,
     initial_state=replace(
-        DEFAULT_SIMULATION_CONFIG.initial_state, arm_angle=math.pi - 0.05
+        DEFAULT_SIMULATION_CONFIG.initial_state,
+        arm_angle=np.random.default_rng().uniform(math.pi - 0.05, math.pi + 0.05),
     ),
 )
 
