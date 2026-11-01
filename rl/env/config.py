@@ -36,7 +36,7 @@ class RLEnvConfig:
 
 RL_ENV_MODES = {
     "easy": RLEnvConfig(
-        simulation=EASY_SIMULATION_CONFIG, max_steps=300, terminate_on_fall=True
+        simulation=EASY_SIMULATION_CONFIG, max_steps=600, terminate_on_fall=True
     ),
     "normal": RLEnvConfig(
         simulation=DEFAULT_SIMULATION_CONFIG, max_steps=600, terminate_on_fall=False
