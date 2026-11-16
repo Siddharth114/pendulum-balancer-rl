@@ -1,12 +1,12 @@
 from collections import defaultdict
 from dataclasses import dataclass
-import math
 
 import numpy as np
 from rich.progress import track
 
 from engine.state import SimulationState
 from rl.algorithms.base_algorithm import BaseAlgorithm
+from rl.algorithms.bellman import Discretisation
 from rl.env.rl_env import RLEnv
 from rl.env.state import Action
 
@@ -15,25 +15,9 @@ from rl.env.state import Action
 class MonteCarloConfig:
     action_space_items: int = 3
 
-    min_arm_angle: float = 0
-    max_arm_angle: float = 2 * np.pi
-    arm_angle_intervals: int = 36
+    discretisation: Discretisation = Discretisation()
 
-    min_block_position: float = 0
-    max_block_position: float = (
-        0  # will be filled after initialisation of algo with the env config
-    )
-    block_position_intervals: int = 4
-
-    # hueristic based
-    min_block_velocity: float = -2
-    max_block_velocity: float = 2
-    block_velocity_intervals: int = 4
-
-    # hueristic based
-    min_angular_velocity: float = -3
-    max_angular_velocity: float = 3
-    angular_velocity_intervals: int = 4
+    max_block_position: float = 0
 
     epsilon_start: float = 1.0
     epsilon_end: float = 0.05
@@ -79,45 +63,14 @@ class MonteCarlo(BaseAlgorithm):
     def name(self) -> str:
         return "Monte Carlo"
 
-    def _identify_bin(
-        self, min_value: float, max_value: float, value: float, num_bins: int
-    ) -> int:
-        fraction = (value - min_value) / (max_value - min_value)
-
-        clipped_bin = min(max(0, math.floor(fraction * num_bins)), num_bins - 1)
-
-        return clipped_bin
-
-    def _wrap_angle(self, angle: float):
-        return angle % (2 * np.pi)
-
     def _get_state_bins(self, state: SimulationState) -> tuple[int, int, int, int]:
-        block_position_bin = self._identify_bin(
-            min_value=self._config.min_block_position,
-            max_value=self._config.max_block_position,
-            value=state.block_position_along_rail,
-            num_bins=self._config.block_position_intervals,
-        )
-
-        block_velocity_bin = self._identify_bin(
-            min_value=self._config.min_block_velocity,
-            max_value=self._config.max_block_velocity,
-            value=state.block_velocity,
-            num_bins=self._config.block_velocity_intervals,
-        )
-
-        arm_angle_bin = self._identify_bin(
-            min_value=self._config.min_arm_angle,
-            max_value=self._config.max_arm_angle,
-            value=self._wrap_angle(state.arm_angle),
-            num_bins=self._config.arm_angle_intervals,
-        )
-
-        angular_velocity_bin = self._identify_bin(
-            min_value=self._config.min_angular_velocity,
-            max_value=self._config.max_angular_velocity,
-            value=state.angular_velocity,
-            num_bins=self._config.angular_velocity_intervals,
+        (
+            block_position_bin,
+            block_velocity_bin,
+            arm_angle_bin,
+            angular_velocity_bin,
+        ) = self._config.discretisation.get_bins(
+            state=state, rail_length=self._config.max_block_position
         )
 
         return (
