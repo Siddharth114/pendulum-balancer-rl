@@ -22,7 +22,10 @@ class Discretisation:
         0.0444,
         0.0833,
         0.1667,
+        0.25,
         0.3333,
+        0.3889,
+        0.4444,
     )
 
     angular_velocity_edges: tuple[float, ...] = (
