@@ -42,21 +42,17 @@ const ROD_HALF = [1.5, 1.2]; // in the swing plane, across it
 const BOB_Y = [13.5, 20.5];
 const CAP = [18.6, 21];
 
-// belt drive on the beam top, motor over the right pulley
+// belt drive on the beam top, a bracket over the left pulley, the motor over the right
 const BELT_Y = -3.5;
 const PULLEY_X = [-30, RAIL + 30];
 const PULLEY_R = 2.5;
 const BELT_Z = [BEAM_TOP + 1, BEAM_TOP + 5];
-const MOTOR = { x: PULLEY_X[1], y: BELT_Y, r: 6.5, z: BEAM_TOP + 7.5, h: 15 };
-const MOTOR_TOP = MOTOR.z + MOTOR.h + 1.2;
-const MOTOR_DIAL_R = MOTOR.r - 1.2;
-
-// chart drum, pen and scrub knob on the bench front
-const DRUM = { x: RAIL + 22, y: 56, r: 24, z: 13, h: 52 };
-const PAPER_SPAN = (300 * Math.PI) / 180;
-const PAPER_Z = [DRUM.z + 4, DRUM.z + DRUM.h - 4];
-const KNOB = { x: -34, y: 60, r: 13 };
-const KNOB_SPAN = (270 * Math.PI) / 180;
+const MOTOR = { x: PULLEY_X[1], y: BELT_Y, r: 7.5, z: BEAM_TOP + 7.5, h: 20 };
+// the push gauge on a stand above the motor, facing the viewer like the protractor
+const GAUGE_R = 18;
+const GAUGE_STAND = MOTOR.z + MOTOR.h + 3; // where the stand leaves the motor's cap
+const GAUGE = { x: MOTOR.x, z: GAUGE_STAND + 3 + GAUGE_R, back: MOTOR.y - 1.2, face: MOTOR.y + 1.2, r: GAUGE_R };
+const GAUGE_SWING = Math.PI / 3; // full push left or right swings the needle 60 degrees
 
 const azimuth = 62;
 const elevation = 27;
@@ -68,15 +64,12 @@ const P = k.fitProjection(
     [BEAM.x, 0, H + ARM + BOB_R + 4],
     [BEAM.x + BEAM.w, 0, H + ARM + BOB_R + 4],
     [-ARM - BOB_R, ROD_Y, H + ARM + BOB_R],
+    [MOTOR.x + GAUGE_R, MOTOR.y, MOTOR.z + MOTOR.h + 6 + 2 * GAUGE_R + 2],
   ],
   WIDTH,
   HEIGHT,
   { pad: 26, azimuth, elevation },
 );
-const V = G.viewOf(P);
-const FACING = Math.atan2(V[1], V[0]); // floor angle that points at the viewer
-const PEN_ANGLE = FACING - (38 * Math.PI) / 180; // on the visible paper, right of centre
-const KNOB_FROM = FACING + (2 * Math.PI - KNOB_SPAN) / 2; // the scale's gap faces the viewer
 
 const at = (point) => k.iso(point, P);
 const S = (paths, style) => k.solidSvg(paths, style);
@@ -118,28 +111,6 @@ function base() {
   });
   out.push(D([at([label.x + 3.4, label.y + label.d / 2, 0.8]), at([label.x + label.w - 3.4, label.y + label.d / 2, 0.8])], { size: 0.45 }));
   return out.join("");
-}
-
-function knob() {
-  // a scale ring on the bench, a collar and a knurled knob whose pointer is the episode
-  const { x, y, r } = KNOB;
-  const out = [];
-  out.push(S(k.cylinder(x, y, r + 11, 0, 0.8, P, 72, 0.4), { tone: "lo" }));
-  const from = KNOB_FROM;
-  const ticks = k.radialTicks(x, y, r + 11, 30, 3, 0.8, [2, 4], P, kitAngle(from), KNOB_SPAN);
-  out.push(L(ticks.minor, { tone: "lo" }), L(ticks.major, { tone: "mid" }));
-  out.push(S(k.cylinder(x, y, r + 3, 0.8, 2.6, P, 64, 0.5), { tone: "mid" }));
-  out.push(S(k.cylinder(x, y, r, 3.4, 9, P, 72, 0.6), { tone: "hi", crease: "lo" }));
-  out.push(L(k.knurl(x, y, r, 3.4, 10.2, 96, P, 0.3), { tone: "lo" }));
-  out.push(L(k.sideArc(x, y, r, 10.2, P, 48), { tone: "faint" }));
-  out.push(L(k.ring(x, y, r - 2.6, 12.4, P, 64), { tone: "faint" }));
-  out.push(L(k.ring(x, y, 1.8, 12.4, P, 20), { tone: "mid" }));
-  return out.join("");
-}
-
-// radialTicks measures from -y, clockwise seen from above; a floor angle is from +x toward +y
-function kitAngle(floor) {
-  return floor + Math.PI / 2;
 }
 
 function post(plan, right) {
@@ -200,8 +171,8 @@ function drive() {
   out.push(S(k.slabOf(left, BELT_Z[1] + 1.4, 1.4, P, 3, 0.4), { tone: "mid" }));
   out.push(D(k.corners(left, 1.4).map(([x, y]) => at([x, y, BELT_Z[1] + 2.8])), { size: 0.4 }));
 
-  // motor mount: a plate on four standoffs, the motor can on it, its dial on top
-  const mount = { x: MOTOR.x - 9, y: MOTOR.y - 9, w: 18, d: 18, r: 1.6 };
+  // motor mount: a plate on four standoffs, the motor can on it, a capped top
+  const mount = { x: MOTOR.x - 10, y: MOTOR.y - 10, w: 20, d: 20, r: 1.6 };
   const legs = k.corners(mount, 1.8);
   for (const [x, y] of byDepth(legs)) out.push(S(k.cylinder(x, y, 1.1, BEAM_TOP, MOTOR.z - 1.5 - BEAM_TOP, P, 16), { tone: "mid" }));
   out.push(S(k.slabOf(mount, MOTOR.z - 1.5, 1.5, P, 4, 0.5), { tone: "mid" }));
@@ -210,18 +181,42 @@ function drive() {
   out.push(S(k.cylinder(x, y, r + 0.8, z, 2, P, 56, 0.4), { tone: "mid" }));
   out.push(S(k.cylinder(x, y, r, z + 2, h - 2, P, 56), { tone: "mid", crease: "none" }));
   out.push(L(k.knurl(x, y, r, z + 4, z + h - 3, 40, P, 0), { tone: "faint" }));
-  out.push(L([k.sideArc(x, y, r, z + 4, P, 32), k.sideArc(x, y, r, z + h - 3, P, 32)].join(""), { tone: "lo" }));
-  out.push(S(k.cylinder(x, y, r + 0.4, z + h, MOTOR_TOP - z - h, P, 56, 0.5), { tone: "hi", crease: "lo" }));
-  out.push(L(k.ring(x, y, MOTOR_DIAL_R, MOTOR_TOP, P, 48), { tone: "lo" }));
-  // command scale: full push left to full push right over 120 degrees
-  const up = FACING + Math.PI; // the dial reads from the far side, toward the viewer
-  const ticks = k.radialTicks(x, y, MOTOR_DIAL_R, 8, 4, MOTOR_TOP, [0.9, 1.8], P, kitAngle(up) - Math.PI / 3, (2 * Math.PI) / 3);
-  out.push(L(ticks.minor, { tone: "lo" }), L(ticks.major, { tone: "mid" }));
-  out.push(L(k.ring(x, y, 0.9, MOTOR_TOP, P, 16), { tone: "mid" }));
+  out.push(S(k.cylinder(x, y, r + 0.4, z + h, 1.6, P, 56, 0.5), { tone: "hi", crease: "lo" }));
+  out.push(S(k.cylinder(x, y, 3, z + h + 1.6, 1.4, P, 24), { tone: "mid" }));
   // terminal block on the motor's side
   out.push(S(k.slabOf({ x: x + r - 1, y: y - 2.5, w: 3.4, d: 5, r: 0.6 }, z + 5, 5, P, 2, 0.3), { tone: "mid" }));
   out.push(D([at([x + r + 2.4, y - 1.2, z + 10]), at([x + r + 2.4, y + 1.2, z + 10])], { size: 0.4 }));
   return out.join("");
+}
+
+// a point on the gauge face: angle from straight up, positive toward +x (push right)
+const onGauge = (angle, radius, lift = 0) => at([GAUGE.x + radius * Math.sin(angle), GAUGE.face + 0.4 + lift, GAUGE.z + radius * Math.cos(angle)]);
+
+function gauge() {
+  const { x, z, back, face, r } = GAUGE;
+  const out = [];
+  out.push(S(k.cylinder(x, MOTOR.y, 1.8, GAUGE_STAND, z - GAUGE_STAND, P, 20), { tone: "mid", crease: "none" }));
+  out.push(yDisc(x, z, back, face, r, { tone: "mid" }));
+  out.push(yDisc(x, z, face, face + 0.4, r - 1.4, { tone: "hi", crease: "lo" }));
+  // scale: a tick every 15 degrees over the swing, long at full left, zero and full right
+  const minor = [];
+  const major = [];
+  for (let step = -4; step <= 4; step++) {
+    const angle = (step / 4) * GAUGE_SWING;
+    const long = step % 4 === 0;
+    (long ? major : minor).push(k.pathOf([onGauge(angle, r * (long ? 0.7 : 0.78)), onGauge(angle, r * 0.88)]));
+  }
+  out.push(L(minor.join(""), { tone: "mid" }), L(major.join(""), { tone: "hi" }));
+  // L and R past the ends of the scale
+  for (const [side, label] of [[-1, "L"], [1, "R"]]) {
+    const [tx, ty] = onGauge(side * (GAUGE_SWING + 0.36), r * 0.66);
+    out.push(`<text class="iso-face-text pb-gauge-text" x="${tx.toFixed(1)}" y="${ty.toFixed(1)}">${label}</text>`);
+  }
+  return out.join("");
+}
+
+function gaugeHub() {
+  return [yDisc(GAUGE.x, GAUGE.z, GAUGE.face + 0.4, GAUGE.face + 1.6, 2.6, { tone: "hi", crease: "lo" }), D([onGauge(0, 0, 1.2)], { size: 0.5, tone: "hi" })].join("");
 }
 
 function carriageBack() {
@@ -275,118 +270,25 @@ function bob() {
   ].join("");
 }
 
-function drumBack() {
-  const { x, y, r, z, h } = DRUM;
-  const out = [];
-  const plinth = { x: x - r - 8, y: y - r - 8, w: 2 * r + 16, d: 2 * r + 16, r: 5 };
-  out.push(`<path class="iso-halo" d="${k.haloOf(plinth, 0, z - 2, P)}" style="filter:blur(5px)"/>`);
-  out.push(S(k.slabOf(plinth, 0, z - 2, P, 6, 0.8), { tone: "mid", inner: L(k.sideSeam(plinth, 3, P, 6), { tone: "faint" }) }));
-  out.push(D(k.corners(plinth, 4).map(([px, py]) => at([px, py, z - 2])), { size: 0.45 }));
-  out.push(S(k.cylinder(x, y, r + 2, z - 2, 2, P, 96, 0.5), { tone: "mid" }));
-  out.push(S(k.cylinder(x, y, r, z, h, P, 120), { tone: "hi", crease: "none" }));
-  // fixed chart grid: a ring at each quarter of the step limit
-  const rings = [0, 0.25, 0.5, 0.75, 1].map((share) => k.sideArc(x, y, r, PAPER_Z[0] + share * (PAPER_Z[1] - PAPER_Z[0]), P, 64));
-  out.push(L(rings.join(""), { tone: "faint" }));
-  return out.join("");
-}
-
-function drumTop() {
-  const { x, y, r, z, h } = DRUM;
-  const top = z + h;
-  return [
-    S(k.cylinder(x, y, r + 1.6, top, 1.6, P, 96, 0.5), { tone: "mid" }),
-    L(k.ring(x, y, r - 3, top + 1.6, P, 72), { tone: "faint" }),
-    D(Array.from({ length: 6 }, (_, index) => {
-      const angle = (index / 6) * Math.PI * 2;
-      return at([x + (r - 6) * Math.cos(angle), y + (r - 6) * Math.sin(angle), top + 1.6]);
-    }), { size: 0.45 }),
-    S(k.cylinder(x, y, 5, top + 1.6, 3, P, 40), { tone: "mid" }),
-    S(k.cylinder(x, y, 3.6, top + 4.6, 5, P, 40), { tone: "hi", crease: "lo" }),
-    L(k.knurl(x, y, 3.6, top + 4.6, top + 9.6, 30, P, 0.3), { tone: "lo" }),
-  ].join("");
-}
-
-const PEN_POST = [DRUM.x + (DRUM.r + 15) * Math.cos(PEN_ANGLE), DRUM.y + (DRUM.r + 15) * Math.sin(PEN_ANGLE)];
-const PEN_POST_TOP = DRUM.z + DRUM.h + 6;
-const PEN_POST_R = 1.6;
-
-function penPost() {
-  const [x, y] = PEN_POST;
-  return [
-    S(k.cylinder(x, y, 4, 0, 2.4, P, 32, 0.4), { tone: "mid" }),
-    S(k.cylinder(x, y, PEN_POST_R, 2.4, PEN_POST_TOP - 2.4, P, 24), { tone: "mid", crease: "none" }),
-  ].join("");
-}
-
-function penPostCap() {
-  const [x, y] = PEN_POST;
-  return S(k.cylinder(x, y, 2.4, PEN_POST_TOP, 1.6, P, 24), { tone: "mid" });
-}
-
-// the pen carriage, arm and nib, built at z = 0 and lifted by the live code
-const PEN_BLOCK = 4;
-function penArm() {
-  const [px, py] = PEN_POST;
-  const u = [Math.cos(PEN_ANGLE), Math.sin(PEN_ANGLE)];
-  const n = [-u[1], u[0]];
-  const from = [px - 2 * u[0], py - 2 * u[1]];
-  const to = [DRUM.x + (DRUM.r + 1.2) * u[0], DRUM.y + (DRUM.r + 1.2) * u[1]];
-  const bar = [
-    [from[0] + n[0] * 1, from[1] + n[1] * 1],
-    [to[0] + n[0] * 1, to[1] + n[1] * 1],
-    [to[0] - n[0] * 1, to[1] - n[1] * 1],
-    [from[0] - n[0] * 1, from[1] - n[1] * 1],
-  ];
-  const nib = [DRUM.x + (DRUM.r + 0.5) * u[0], DRUM.y + (DRUM.r + 0.5) * u[1]];
-  return [
-    S(k.extrude(bar, -0.8, 1.6, P), { tone: "mid" }),
-    S(k.cylinder(nib[0], nib[1], 0.8, -2, 3, P, 14), { tone: "hi", crease: "lo" }),
-  ].join("");
-}
-
-function penBlock() {
-  const [x, y] = PEN_POST;
-  const block = { x: x - 3, y: y - 3, w: 6, d: 6, r: 1 };
-  return [
-    S(k.slabOf(block, -PEN_BLOCK / 2, PEN_BLOCK, P, 3, 0.4), { tone: "mid" }),
-    S(k.slabOf({ x: x + 3, y: y - 1, w: 2, d: 2, r: 0.4 }, -1, 2, P, 2), { tone: "mid" }),
-    S(k.cylinder(x + 5.8, y, 1.4, -1.4, 2.8, P, 16), { tone: "mid" }),
-    L(k.knurl(x + 5.8, y, 1.4, -1.4, 1.4, 12, P, 0.2), { tone: "lo" }),
-  ].join("");
-}
-
-// the drum's limbs are fixed on screen, so one mask fades everything drawn on the paper
-const drumCentre = at([DRUM.x, DRUM.y, 0]);
-const drumHalf = DRUM.r * G.scaleOf(P);
-const drumMask = `<defs><linearGradient id="pb-drum-fade" gradientUnits="userSpaceOnUse" x1="${(drumCentre[0] - drumHalf).toFixed(1)}" y1="0" x2="${(drumCentre[0] + drumHalf).toFixed(1)}" y2="0"><stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset=".2" stop-color="#fff"/><stop offset=".8" stop-color="#fff"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient><mask id="pb-drum-mask" maskUnits="userSpaceOnUse" x="0" y="0" width="${WIDTH}" height="${HEIGHT}"><rect width="${WIDTH}" height="${HEIGHT}" fill="url(#pb-drum-fade)"/></mask></defs>`;
-
 const restPivot = [0, 0, 0];
 const svg = k.figureSvg({
   width: WIDTH,
   height: HEIGHT,
-  label: `A pendulum on a sliding pivot. A carriage rides a beam between two posts, driven by a belt and a motor whose dial shows the push; the arm hangs from the carriage and replays episodes recorded in run ${DATA.run}. A drum chart records how long each of the ${DATA.episodes} episodes lasted, and a knob on the bench points at the episode.`,
+  label: `A pendulum on a sliding pivot. A carriage rides a beam between two posts, driven by a belt and a motor whose gauge shows the push left or right; the arm hangs from the carriage and replays episodes recorded in run ${DATA.run}.`,
   body: [
-    drumMask,
     base(),
     post(POSTS[0], false),
     beam(),
     post(POSTS[1], true),
     drive(),
-    knob(),
-    `<path data-part="knob-pointer" class="iso-line" data-tone="hi" data-free="end" d=""/>`,
-    `<path data-part="motor-needle" class="iso-line" data-tone="hi" data-free="end" d="" style="stroke-width:.9"/>`,
+    gauge(),
+    `<path data-part="push-sector" class="pb-push" d=""/>`,
+    `<path data-part="motor-needle" class="iso-line pb-needle" d=""/>`,
+    gaugeHub(),
     `<g data-part="carriage">${carriageBack()}</g>`,
     `<g data-part="rod" class="iso-solid"></g>`,
     `<g data-part="bob">${bob()}</g>`,
     `<g data-part="carriage-front">${carriageFront()}</g>`,
-    drumBack(),
-    `<g data-part="chart" mask="url(#pb-drum-mask)"></g>`,
-    drumTop(),
-    `<g data-part="pen-arm">${penArm()}</g>`,
-    penPost(),
-    `<g data-part="pen-block">${penBlock()}</g>`,
-    `<g data-part="pen-post-top"></g>`,
-    penPostCap(),
   ],
 });
 
@@ -399,10 +301,7 @@ const LIVE_DATA = {
   ROD_HALF,
   HUB,
   restPivot,
-  knob: { ...KNOB, from: KNOB_FROM, span: KNOB_SPAN, top: 12.4 },
-  motor: { x: MOTOR.x, y: MOTOR.y, r: MOTOR_DIAL_R - 1, top: MOTOR_TOP, up: FACING + Math.PI },
-  drum: { ...DRUM, paperZ: PAPER_Z, span: PAPER_SPAN, pen: PEN_ANGLE, facing: FACING },
-  pen: { post: PEN_POST, r: PEN_POST_R, top: PEN_POST_TOP, block: PEN_BLOCK },
+  gauge: { x: GAUGE.x, y: GAUGE.face + 0.5, z: GAUGE.z, r: GAUGE.r, swing: GAUGE_SWING },
   data: DATA,
 };
 
@@ -411,18 +310,31 @@ const LIVE = readFileSync(join(HERE, "live.js"), "utf8").replace("__DATA__", JSO
 const CSS = `
 .pb-stage{position:relative;touch-action:pan-y;cursor:ew-resize;outline:none}
 .pb-stage:focus-visible{outline:1px solid var(--anatomy-muted);outline-offset:6px}
-.pb-chart-band{fill:var(--anatomy-hi);opacity:.07;stroke:none}
-.iso[data-theme="light"] .pb-chart-band{opacity:.09}
-.pb-timeline{margin-top:14px;font-family:var(--anatomy-mono);font-size:10.5px;letter-spacing:.04em;color:var(--anatomy-muted);font-variant-numeric:tabular-nums}
-.pb-strip-head{display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin-bottom:6px}
-.pb-strip-title{text-transform:uppercase;letter-spacing:.1em}
-.pb-jumps{display:flex;gap:4px;align-items:center}
-.pb-jumps i{width:10px}
-.pb-view{margin-left:auto;margin-right:10px}
-.pb-jumps button{font:inherit;color:var(--anatomy-text);background:none;border:0;box-shadow:0 0 0 1px var(--anatomy-lo);padding:3px 8px;cursor:pointer}
-.pb-jumps button:hover,.pb-jumps button:focus-visible{box-shadow:0 0 0 1px var(--anatomy-mid);color:var(--anatomy-strong);outline:none}
-.pb-plot{position:relative;height:96px;background:var(--anatomy-card);box-shadow:0 0 0 1px var(--anatomy-mid);cursor:pointer;touch-action:pan-y;outline:none}
-.pb-plot:focus-visible{box-shadow:0 0 0 1px var(--anatomy-hi)}
+.pb-push{fill:var(--anatomy-blue);opacity:.55;stroke:none}
+.pb-needle{stroke:var(--anatomy-lit);stroke-width:1.8}
+.pb-gauge-text{font-size:8px;font-weight:600;text-anchor:middle;dominant-baseline:central;fill:var(--anatomy-strong)}
+.pb-plate-hint{display:flex;align-items:center;gap:10px;color:var(--anatomy-strong)!important;font-size:11.5px!important;text-transform:none!important;letter-spacing:.02em!important}
+.pb-plate-hint span{display:inline-flex;align-items:center;gap:5px}
+.pb-plate-hint b{font-weight:400;color:var(--anatomy-muted)}
+.pb-plate-hint kbd{font:inherit;font-size:10.5px;line-height:1;min-width:18px;text-align:center;padding:3px 5px;color:var(--anatomy-strong);box-shadow:0 0 0 1px var(--anatomy-mid),0 1.5px 0 0 var(--anatomy-mid)}
+.pb-timeline{margin-top:16px;font-family:var(--anatomy-mono);font-size:10.5px;letter-spacing:.04em;color:var(--anatomy-muted);font-variant-numeric:tabular-nums}
+.pb-strip-head{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:10px 16px;margin-bottom:10px}
+.pb-strip-title{text-transform:uppercase;letter-spacing:.1em;color:var(--anatomy-text)}
+.pb-view{margin-left:auto}
+.pb-controls{display:flex;flex-wrap:wrap;align-items:center;gap:8px 18px}
+.pb-group{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+.pb-group-label{text-transform:uppercase;letter-spacing:.1em;margin-right:2px}
+.pb-group button{font:inherit;font-size:12px;line-height:1;white-space:nowrap;color:var(--anatomy-strong);background:var(--anatomy-face);border:0;box-shadow:0 0 0 1px var(--anatomy-mid);padding:8px 12px;min-height:30px;cursor:pointer;transition:box-shadow .15s var(--anatomy-ease),background .15s var(--anatomy-ease)}
+.pb-group button[data-wide]{min-width:30px;padding:8px 10px}
+.pb-group button:hover{box-shadow:0 0 0 1px var(--anatomy-hi)}
+.pb-group button:focus-visible{box-shadow:0 0 0 2px var(--anatomy-lit);outline:none}
+.pb-group button:active{background:var(--anatomy-card);transform:translateY(.5px)}
+.pb-usage{position:absolute;top:5px;right:8px;color:var(--anatomy-text);pointer-events:none;transition:opacity .15s}
+.pb-plot[data-hover] .pb-usage{opacity:0}
+@media (max-width:560px){.pb-usage{display:none}.pb-group-label{flex-basis:100%}}
+.pb-plot{position:relative;height:110px;background:var(--anatomy-card);box-shadow:0 0 0 1px var(--anatomy-mid);cursor:pointer;touch-action:pan-y;outline:none}
+.pb-plot:hover{box-shadow:0 0 0 1px var(--anatomy-hi)}
+.pb-plot:focus-visible{box-shadow:0 0 0 2px var(--anatomy-lit)}
 .pb-plot canvas{position:absolute;inset:0;width:100%;height:100%}
 .pb-mark{position:absolute;top:0;bottom:0;width:0;pointer-events:none;border-left:1px solid var(--anatomy-lit)}
 .pb-mark[data-kind="hover"]{border-left:1px dashed var(--anatomy-mid);display:none}
@@ -433,37 +345,41 @@ const CSS = `
 .pb-axis span{position:absolute;transform:translateX(-50%)}
 .pb-axis span[data-edge="start"]{transform:none}
 .pb-axis span[data-edge="end"]{transform:translateX(-100%)}
-.pb-overview{position:relative;height:14px;margin-top:2px;box-shadow:0 0 0 1px var(--anatomy-lo);cursor:grab;touch-action:none}
+.pb-overview{position:relative;height:20px;margin-top:4px;box-shadow:0 0 0 1px var(--anatomy-mid);cursor:grab;touch-action:none}
+.pb-overview:active{cursor:grabbing}
 .pb-overview canvas{position:absolute;inset:0;width:100%;height:100%}
-.pb-window{position:absolute;top:0;bottom:0;min-width:3px;box-shadow:inset 0 0 0 1px var(--anatomy-hi);background:color-mix(in srgb,var(--anatomy-hi) 8%,transparent);pointer-events:none}
+.pb-window{position:absolute;top:0;bottom:0;min-width:6px;box-shadow:inset 0 0 0 1.5px var(--anatomy-lit);background:color-mix(in srgb,var(--anatomy-hi) 16%,transparent);pointer-events:none}
 .pb-plot[data-panning]{cursor:grabbing}
 `;
 
 const body = k.plateHtml({
   fig: "Fig 1",
   title: "Pendulum bench",
-  hint: "Drag, ← →, or the timeline below",
   readout: `episode ${DATA.first}`,
   keys: [
     { mark: "lit", label: "Bob: the episode replaying now" },
-    { mark: "raised", label: `Drum: the longest each of the ${DATA.episodes.toLocaleString("en-US")} episodes stayed upright` },
+    { mark: "blue", label: "Motor gauge: the push each step, left or right" },
   ],
-  caption: `Run ${DATA.run}. The arm replays a recorded episode at true speed on a ${META.rail_length} m rail with a ${META.arm_length} m arm; the motor dial shows the push each step. The drum and the timeline record each episode's longest run with the bob above the rail, scaled to the run's best, out of a ${META.max_steps}-step limit; a picked episode loads from the episode files beside this page.`,
+  caption: `Run ${DATA.run}. The arm replays a recorded episode at true speed on a ${META.rail_length} m rail with a ${META.arm_length} m arm; the motor gauge swings left or right with the push each step. The timeline records each episode's longest run with the bob above the rail, scaled to the run's best, out of a ${META.max_steps}-step limit; a picked episode loads from the episode files beside this page.`,
   body: `<div class="pb-stage" tabindex="0" role="slider" aria-label="Episode: drag or use the arrow keys to pick an episode, Home and End for the first and last" aria-valuemin="${DATA.first}" aria-valuemax="${DATA.last}" aria-valuenow="${DATA.first}">${svg}</div>`,
 });
 
 // the timeline: every episode's survival under the plate, zoomable down to single episodes
 const fmt = (value) => value.toLocaleString("en-US");
-const button = (name, label, title) => `<button type="button" data-jump="${name}" title="${title}">${label}</button>`;
+const button = (name, label, title, wide = false) => `<button type="button" data-jump="${name}" title="${title}" aria-label="${title}"${wide ? " data-wide" : ""}>${label}</button>`;
 const timeline = `<div class="pb-timeline">
-<div class="pb-strip-head"><span class="pb-strip-title">Episodes · ${fmt(DATA.episodes)}</span><span class="pb-view" data-view></span><span class="pb-jumps">${button("first", "first", "First episode")}${button("longest", "longest", "Longest episode")}${button("last", "last", "Last episode")}<i></i>${button("out", "−", "Zoom out")}${button("in", "+", "Zoom in")}${button("fit", "fit", "Show the whole run")}</span></div>
+<div class="pb-strip-head"><span class="pb-strip-title">Episodes · ${fmt(DATA.episodes)}</span><span class="pb-view" data-view></span></div>
+<div class="pb-strip-head"><span class="pb-controls"><span class="pb-group"><span class="pb-group-label">Episode</span>${button("first", "first", "First episode")}${button("prev", "‹ prev", "Previous episode")}${button("next", "next ›", "Next episode")}${button("last", "last", "Last episode")}${button("longest", "★ longest", "Longest episode")}</span><span class="pb-group"><span class="pb-group-label">Zoom</span>${button("out", "−", "Zoom out", true)}${button("in", "+", "Zoom in", true)}${button("fit", "fit", "Show the whole run")}</span></span></div>
 <div class="pb-plot" tabindex="0" role="slider" aria-label="Episode timeline: click an episode to replay it, drag to pan, scroll to zoom; arrow keys step one episode, Shift ten, plus and minus zoom" aria-valuemin="${DATA.first}" aria-valuemax="${DATA.last}" aria-valuenow="${DATA.first}">
-<canvas></canvas><span class="pb-scale" style="top:4px">${META.max_steps} steps upright</span><span class="pb-mark" data-kind="hover"></span><span class="pb-mark" data-kind="now"></span><span class="pb-tip" hidden></span>
+<canvas></canvas><span class="pb-scale" style="top:4px">${META.max_steps} steps upright</span><span class="pb-usage">click to replay · drag to pan · scroll to zoom</span><span class="pb-mark" data-kind="hover"></span><span class="pb-mark" data-kind="now"></span><span class="pb-tip" hidden></span>
 </div>
 <div class="pb-axis" data-axis></div>
 <div class="pb-overview" aria-hidden="true"><canvas></canvas><span class="pb-window"></span></div>
 </div>`;
-const page = body.replace("<figcaption", `${timeline}<figcaption`);
+const plateHint = `<span class="iso-plate-corner pb-plate-hint" data-corner="hint"><span><kbd>drag</kbd><b>the bench</b></span><span><kbd>←</kbd><kbd>→</kbd><b>step</b></span><span><kbd>shift</kbd><b>×10</b></span></span>`;
+const page = body
+  .replace('<div class="iso-plate-corners" aria-hidden="true">', `$&${plateHint}`)
+  .replace("<figcaption", `${timeline}<figcaption`);
 
 writeFileSync(outPath, k.pageHtml({ title: "Pendulum bench", theme, width: 860, body: `<style>${CSS}</style>${page}`, script: readFileSync(join(HERE, "kit/iso-kit.mjs"), "utf8").replace(/^export /gm, "") + LIVE }));
 console.log("wrote", outPath);

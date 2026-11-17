@@ -23,7 +23,7 @@ const STEPS = PACKED.map((value) => value & 0x7fff);
 const FELL = PACKED.map((value) => value >> 15);
 const NUMBERS = RUN.numbers ? decode(RUN.numbers, Int32Array) : null;
 const numberOf = (index) => (NUMBERS ? NUMBERS[index] : RUN.first + index);
-// the longest run upright in each episode: what the drum and timeline chart
+// the longest run upright in each episode: what the timeline charts
 const BALANCE = decode(RUN.balance, Uint16Array);
 const LONGEST = BALANCE.reduce((best, steps, index) => (steps > BALANCE[best] ? index : best), 0);
 // the charts' top: the best balance rounded up to a round number, never past the limit
@@ -33,7 +33,7 @@ const SCALE = (() => {
   return Math.min(META.max_steps, [1, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10].map((m) => m * power).find((top) => top >= best));
 })();
 
-// the drum's paper: each column the min, mean and max of a run of neighbouring episodes
+// the timeline's columns: each one the min, mean and max of a run of neighbouring episodes
 const COLUMNS = (() => {
   const count = Math.min(COUNT, 1200);
   const min = new Float32Array(count);
@@ -88,75 +88,19 @@ function drawRod(pivotX, angle) {
   carriageFrontEl.setAttribute("transform", slide);
 }
 
-// ---- the motor dial, the knob ----------------------------------------------
+// ---- the motor gauge: the needle and a wedge from zero swing with the push ----------
 const needleEl = part("motor-needle");
-const knobEl = part("knob-pointer");
-function drawNeedle(command) {
-  const { x, y, r, top, up } = DATA.motor;
-  const angle = up + command * (Math.PI / 3);
-  needleEl.setAttribute("d", lineOnTop([x - Math.cos(angle) * 1.2, y - Math.sin(angle) * 1.2], [x + Math.cos(angle) * r, y + Math.sin(angle) * r], top + 0.1, P));
+const sectorEl = part("push-sector");
+const GAUGE = DATA.gauge;
+const onGauge = (angle, radius) => iso([GAUGE.x + radius * Math.sin(angle), GAUGE.y, GAUGE.z + radius * Math.cos(angle)], P);
+function drawGauge(command) {
+  const angle = clamp(command, -1, 1) * GAUGE.swing;
+  needleEl.setAttribute("d", pathOf([onGauge(angle + Math.PI, 3.4), onGauge(angle, GAUGE.r * 0.86)]));
+  const steps = Math.max(1, Math.ceil(Math.abs(angle) / 0.06));
+  const rim = Array.from({ length: steps + 1 }, (_, i) => onGauge((angle * i) / steps, GAUGE.r * 0.86));
+  sectorEl.setAttribute("d", Math.abs(angle) < 0.01 ? "" : pathOf([onGauge(0, 0), ...rim], true));
 }
-function drawKnob(share) {
-  const { x, y, r, from, span, top } = DATA.knob;
-  const angle = from + share * span;
-  knobEl.setAttribute("d", lineOnTop([x + Math.cos(angle) * 2.4, y + Math.sin(angle) * 2.4], [x + Math.cos(angle) * (r - 2.6), y + Math.sin(angle) * (r - 2.6)], top, P));
-}
-
-// ---- the drum chart ---------------------------------------------------------
-const chartEl = part("chart");
-const penArmEl = part("pen-arm");
-const penBlockEl = part("pen-block");
-const penTopEl = part("pen-post-top");
-const DRUM = DATA.drum;
-const zOfSteps = (steps) => DRUM.paperZ[0] + (Math.min(steps, SCALE) / SCALE) * (DRUM.paperZ[1] - DRUM.paperZ[0]);
-const columnAt = (share) => clamp(Math.floor(share * COLUMNS.count), 0, COLUMNS.count - 1);
-const facingOf = (angle) => Math.cos(angle - DRUM.facing);
-const onDrum = (angle, z) => iso([DRUM.x + DRUM.r * Math.cos(angle), DRUM.y + DRUM.r * Math.sin(angle), z], P);
-
-function drawChart(share) {
-  // paper turns past the pen: an episode at share s sits span * (share - s) behind it
-  const angleOf = (s) => DRUM.pen + DRUM.span * (share - s);
-  const mean = [];
-  const band = [];
-  let run = null;
-  let bandRun = null;
-  const last = columnAt(share);
-  for (let c = 0; c <= last; c++) {
-    const s = c === last ? share : (c + 0.5) / COLUMNS.count;
-    const angle = angleOf(s);
-    if (facingOf(angle) < 0.01) {
-      run = bandRun = null;
-      continue;
-    }
-    if (!run) mean.push((run = []));
-    if (!bandRun) band.push((bandRun = { low: [], high: [] }));
-    run.push(onDrum(angle, zOfSteps(COLUMNS.mean[c])));
-    bandRun.low.push(onDrum(angle, zOfSteps(COLUMNS.min[c])));
-    bandRun.high.push(onDrum(angle, zOfSteps(COLUMNS.max[c])));
-  }
-  const grid = [];
-  for (let tenth = 0; tenth <= 10; tenth++) {
-    const s = tenth / 10;
-    if (s > share) break;
-    const angle = angleOf(s);
-    if (facingOf(angle) > 0.01) grid.push(pathOf([onDrum(angle, DRUM.paperZ[0]), onDrum(angle, DRUM.paperZ[1])]));
-  }
-  // the paper's leading edge: the first episode
-  const start = angleOf(0);
-  const edge = facingOf(start) > 0.01 ? pathOf([onDrum(start, DRUM.z), onDrum(start, DRUM.z + DRUM.h)]) : "";
-  chartEl.innerHTML =
-    band.map(({ low, high }) => (low.length > 1 ? `<path class="pb-chart-band" d="${pathOf([...low, ...high.reverse()], true)}"/>` : "")).join("") +
-    lineSvg(grid.join(""), { tone: "faint" }) +
-    lineSvg(edge, { tone: "lo" }) +
-    lineSvg(mean.filter((points) => points.length > 1).map((points) => pathOf(points)).join(""), { tone: "hi" });
-  const steps = COLUMNS.mean[last];
-  const lift = zOfSteps(steps);
-  const lifted = translateAlong(P, [0, 0, lift]);
-  penArmEl.setAttribute("transform", lifted);
-  penBlockEl.setAttribute("transform", lifted);
-  const { post, r, top, block } = DATA.pen;
-  penTopEl.innerHTML = solidSvg(cylinder(post[0], post[1], r, lift + block / 2, top - lift - block / 2, P, 24), { tone: "mid", crease: "none" });
-}
+const pushOf = (command) => (command > 0.33 ? "push →" : command < -0.33 ? "push ←" : "no push");
 
 // ---- episodes, read from the recording when picked ------------------------------
 const fmt = (value) => value.toLocaleString("en-US");
@@ -258,11 +202,11 @@ let share = shareOf(wanted);
 let target = share;
 let time = 0;
 let offset = { angle: 0, position: 0, age: 1 };
-let shown = stateOf(null, 0);
 let command = 0;
+let shown = stateOf(null, 0);
 let touring = !still.matches;
 let tourStop = 0;
-let steering = false; // the figure is being dragged: follow the knob once it rests
+let steering = false; // the figure is being dragged: follow it once it rests
 let pending = -1;
 let pendingSince = 0;
 let frame = 0;
@@ -305,7 +249,7 @@ function say() {
     const length = sample.steps * META.dt;
     const seconds = Math.min(time, length).toFixed(1);
     const lean = Math.round((wrap(shown.angle - Math.PI) * 180) / Math.PI);
-    const tail = time >= length ? `${sample.fell ? "fell at" : "held"} ${seconds} s` : `${seconds} s · lean ${lean > 0 ? "+" : ""}${lean}°`;
+    const tail = time >= length ? `${sample.fell ? "fell at" : "held"} ${seconds} s` : `${seconds} s · lean ${lean > 0 ? "+" : ""}${lean}° · ${pushOf(shown.command ?? 0)}`;
     text = `episode ${fmt(sample.episode)} of ${fmt(COUNT)} · ${tail}`;
   }
   if (readout.textContent !== text) readout.textContent = text;
@@ -323,7 +267,7 @@ function tick(now) {
     if (wanted !== stop) pick(stop, { keepView: true });
     if (sample && sample.index === stop && time > length + HOLD) tourStop = (tourStop + 1) % TOUR.length;
   } else if (steering) {
-    // follow the knob, but only once it has rested on an episode for a moment
+    // follow the drag, but only once it has rested on an episode for a moment
     const near = Math.round(share * (COUNT - 1));
     if (near !== pending) {
       pending = near;
@@ -346,13 +290,11 @@ function tick(now) {
 
   const state = stateOf(sample, time);
   const fade = calm ? 0 : Math.exp(-offset.age / 0.16);
-  shown = { angle: state.angle + offset.angle * fade, position: state.position + offset.position * fade };
+  shown = { angle: state.angle + offset.angle * fade, position: state.position + offset.position * fade, command: state.command };
   command = follow(command, state.command, dt, 0.05);
 
   drawRod(shown.position * DATA.M, shown.angle);
-  drawNeedle(command);
-  drawKnob(share);
-  drawChart(share);
+  drawGauge(command);
   say();
 
   const resting = calm && share === target;
@@ -641,6 +583,8 @@ document.querySelectorAll("[data-jump]").forEach((button) =>
     if (jump === "first") pick(0);
     else if (jump === "last") pick(COUNT - 1);
     else if (jump === "longest") pick(LONGEST);
+    else if (jump === "prev") pick(wanted - 1);
+    else if (jump === "next") pick(wanted + 1);
     else if (jump === "fit") setView(0, COUNT);
     else zoomAt(jump === "in" ? 0.25 : 4, wanted + 0.5);
   }),
